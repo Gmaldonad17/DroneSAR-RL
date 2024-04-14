@@ -19,13 +19,17 @@ class landscapev0(ParallelEnv):
     }
 
     def __init__(self, 
-                 pixels_per_meter=5, 
+                 pixels_per_meter=2, 
                  landscape_size=200,
                  center_percent=0.15,
-                 hints=[[0.15, 0.25], [0.25, 0.35], [0.35, 0.55]],
+                 hints=[
+                     [0.15, 0.25], 
+                     [0.25, 0.35], 
+                     [0.35, 0.55],
+                     ],
                  map_seed=Seed(), 
                  pre_gen="", 
-                 num_drones=1):
+                 num_drones=8):
 
         self.drones = [QuadDrone() for i in range(num_drones)]
 
@@ -39,6 +43,13 @@ class landscapev0(ParallelEnv):
         self.home_base = None
         self.objective = None
         self.hints = []
+
+        self.drone_starts = [
+            [-1, 3], [1, 3], 
+            [-3, 1], [3, 1], 
+            [-3, -1], [3, -1],
+            [-1, -3], [1, -3], 
+        ]
 
         self.encyclopedia = encyclopedia_creation()
         self.map = BoardBox.create_empty_board(*self.size)
@@ -68,6 +79,7 @@ class landscapev0(ParallelEnv):
         self.reset_map(options)
         self.reset_locations(options)
         self.read_map()
+        self.reset_drones(options)
 
         self.screen = pygame.display.set_mode(self.img_map.shape[:2])
         pygame.display.set_caption("Landscape Map")
@@ -110,25 +122,21 @@ class landscapev0(ParallelEnv):
 
         self.map.set_element(
                     value=Box(self.encyclopedia._biomes['home'], 0.0, 0.0, 0.0),
-                    x=self.home_base[0],
-                    y=self.home_base[1]
+                    x=self.home_base[1],
+                    y=self.home_base[0]
                 )
 
         self.map.set_element(
                     value=Box(self.encyclopedia._biomes['objective'], 0.0, 0.0, 0.0),
-                    x=self.objective[0],
-                    y=self.objective[1]
+                    x=self.objective[1],
+                    y=self.objective[0]
                 )
 
 
-        for hint in self.hints_percents:
+        for i, hint in enumerate(self.hints_percents):
             inner_mask = ~self.create_centered_mask(hint[0], self.objective)
             outer_mask = self.create_centered_mask(hint[1], self.objective)
             hint_mask = inner_mask & outer_mask & land_mask & ~home_mask
-
-            hint_mask_img = (hint_mask * 255).astype(np.uint8)
-            cv2.imshow("Hint Mask", hint_mask_img)
-            cv2.waitKey(0)
 
             hint_location = self.pick_location(hint_mask)
             if hint_location is not None:
@@ -137,22 +145,21 @@ class landscapev0(ParallelEnv):
         for hint in self.hints:
             self.map.set_element(
                     value=Box(self.encyclopedia._biomes['hint'], 0.0, 0.0, 0.0),
-                    x=hint[0],
-                    y=hint[1]
+                    x=hint[1],
+                    y=hint[0]
                 )
-            
-        land_mask_img = (land_mask * 255).astype(np.uint8)
-        home_mask_img = (home_mask * 255).astype(np.uint8)
-        obj_mask_img = (obj_mask * 255).astype(np.uint8)
-        hint_mask_img = (hint_mask * 255).astype(np.uint8)
+        
+    def reset_drones(self, options):
+        if not options.get('reset_drone', 1):
+            return
+        
+        if len(self.drones) > len(self.drone_starts):
+            raise "Too Many Drones, Add more starting areas"
 
-        # Display the masks using OpenCV
-        cv2.imshow("Land Mask", land_mask_img)
-        cv2.imshow("Home Mask", home_mask_img)
-        cv2.imshow("Object Mask", obj_mask_img)
-        cv2.imshow("Hint Mask", hint_mask_img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        for i in range(len(self.drones)):
+            realtive_start = self.drone_starts[i]
+            start = np.array(realtive_start) + np.array(self.home_base)
+            self.drones[i].position = start.astype(np.float32)
 
 
     def create_centered_mask(self, center_percent, center):
@@ -215,7 +222,10 @@ class landscapev0(ParallelEnv):
     #     print()
 
     def step(self, actions):
-        pass
+        for action, drone in zip(actions, self.drones):
+
+            # Setting 
+            drone.set_motor_powers(action)
 
     def render(self):
         if not pygame.get_init():

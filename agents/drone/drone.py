@@ -5,15 +5,18 @@ import pygame
 
 class QuadDrone:
     def __init__(self):
+        self.pixel_size = 6
         self.motor_powers = np.zeros(4)  # Motor powers [0, 1] normalized
-        self.position = np.array([20.0, 20.0, 20.0])  # X, Y, Z position
-        self.orientation = np.array([0.0, 0.0, 0.0])  # Roll, Pitch, Yaw angles in radians
-        self.velocity = np.array([0.0, 0.0, 0.0])  # X, Y, Z velocity
-        self.angular_velocity = np.array([0.0, 0.0, 0.0])  # Roll, Pitch, Yaw rates
+        self.position = np.array([0.0, 0.0, 0.0], dtype=np.float32) # X, Y, Z position
+        self.orientation = np.array([0.0, 0.0, 0.0], dtype=np.float32)  # Roll, Pitch, Yaw angles in radians
+        self.velocity = np.array([0.05, 0.0, 0.0], dtype=np.float32)  # X, Y, Z velocity
+        self.angular_velocity = np.array([0.0, 0.0, 0.0], dtype=np.float32)  # Roll, Pitch, Yaw rates
         self.mass = 0.5  # Mass of the drone in kilograms
         self.gravity = 9.81  # Gravitational acceleration (m/s^2)
         self.max_motor_thrust = 10.5  # Max thrust per motor in Newtons
         self.time_step = 0.01  # Time step for simulation in seconds
+
+        self.crashed = False
 
     def set_motor_powers(self, powers):
         """Sets the power for each motor and updates the drone's state."""
@@ -85,11 +88,11 @@ class QuadDrone:
     
     def render(self, scale=1):
         position = copy(self.position) * scale
-        color = [np.clip(position[2], 0, 255) for i in range(3)]
-        size = 2
-        rect = pygame.Rect(position[0] - size,
-                           position[1] - size,
-                           size+3,
-                           size+3,
+        color = [np.clip(255, 0, 255) for i in range(3)]
+
+        rect = pygame.Rect(position[0] - scale//2,
+                           position[1] - scale//2,
+                           scale,
+                           scale,
                            )
         return rect, color

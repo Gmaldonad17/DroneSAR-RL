@@ -1,2 +1,1 @@
 from custom_environment.landscape.landscape import landscapev0
-from custom_environment.landscape.landscape_gen import landscape_gen
