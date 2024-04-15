@@ -19,7 +19,8 @@ class landscapev0(ParallelEnv):
     }
 
     def __init__(self, 
-                 pixels_per_meter=2, 
+                 pixels_per_meter=8, 
+                 darkening_factor=0.5,
                  landscape_size=200,
                  center_percent=0.15,
                  hints=[
@@ -34,6 +35,7 @@ class landscapev0(ParallelEnv):
         self.drones = [QuadDrone() for i in range(num_drones)]
 
         self.ppm = pixels_per_meter
+        self.darkening_factor = darkening_factor
         self.size = (landscape_size, landscape_size)
         self.map_seed = map_seed
         self.center_percent = center_percent
@@ -55,6 +57,7 @@ class landscapev0(ParallelEnv):
         self.map = BoardBox.create_empty_board(*self.size)
         self.tile_map = np.zeros((*self.size, 2))
         self.img_map = np.zeros((*self.size, 3))
+        self.discovery_map = np.zeros(self.size)
 
     def generate_map(self, map):
 
@@ -74,7 +77,7 @@ class landscapev0(ParallelEnv):
 
         return map
 
-    def reset(self, options={}):
+    def reset(self, seed=None, options={}):
         
         self.reset_map(options)
         self.reset_locations(options)
@@ -83,8 +86,16 @@ class landscapev0(ParallelEnv):
 
         self.screen = pygame.display.set_mode(self.img_map.shape[:2])
         pygame.display.set_caption("Landscape Map")
+        
+        background = copy(self.img_map)
+        map_mask = cv2.resize(copy(self.discovery_map), (0,0), 
+                                  fx=self.ppm, fy=self.ppm, 
+                                  interpolation=cv2.INTER_NEAREST
+                                ).astype(bool)
+        background[~map_mask] = (background[~map_mask] * self.darkening_factor)
 
-        self.background_surface = pygame.surfarray.make_surface(self.img_map[:,:,::-1])
+        self.background_surface = pygame.surfarray.make_surface(background)
+        
         
         return None, None
     
@@ -122,14 +133,14 @@ class landscapev0(ParallelEnv):
 
         self.map.set_element(
                     value=Box(self.encyclopedia._biomes['home'], 0.0, 0.0, 0.0),
-                    x=self.home_base[1],
-                    y=self.home_base[0]
+                    x=self.home_base[0],
+                    y=self.home_base[1]
                 )
 
         self.map.set_element(
                     value=Box(self.encyclopedia._biomes['objective'], 0.0, 0.0, 0.0),
-                    x=self.objective[1],
-                    y=self.objective[0]
+                    x=self.objective[0],
+                    y=self.objective[1]
                 )
 
 
@@ -145,10 +156,11 @@ class landscapev0(ParallelEnv):
         for hint in self.hints:
             self.map.set_element(
                     value=Box(self.encyclopedia._biomes['hint'], 0.0, 0.0, 0.0),
-                    x=hint[1],
-                    y=hint[0]
+                    x=hint[0],
+                    y=hint[1]
                 )
         
+
     def reset_drones(self, options):
         if not options.get('reset_drone', 1):
             return
@@ -160,12 +172,14 @@ class landscapev0(ParallelEnv):
             realtive_start = self.drone_starts[i]
             start = np.array(realtive_start) + np.array(self.home_base)
             self.drones[i].position = start.astype(np.float32)
+            mask, self.drones[i].observation = self.return_observation(self.drones[i].position)
+            self.discovery_map[mask] = 1
 
 
     def create_centered_mask(self, center_percent, center):
         center_radius = int(min(self.size) * center_percent)
 
-        y_grid, x_grid = np.ogrid[-center[1]:self.size[0]-center[1], -center[0]:self.size[1]-center[0]]
+        y_grid, x_grid = np.ogrid[-center[0]:self.size[0]-center[0], -center[1]:self.size[1]-center[1]]
         centered_mask = x_grid**2 + y_grid**2 <= center_radius**2
         
         return centered_mask
@@ -176,60 +190,74 @@ class landscapev0(ParallelEnv):
 
         if len(possible_indices) > 0:
             picked_index = possible_indices[np.random.choice(len(possible_indices))]
-            picked = (picked_index[1], picked_index[0])
+            picked = (picked_index[0], picked_index[1])
             return picked
         else:
             # Deal with this option later
             print("No valid location found for home base")
             return None
 
+
     def read_map(self,):
         self.img_map = np.zeros((*self.size, 3))
         self.tile_map = write_tile_body(self.tile_map, self.map, self.encyclopedia)
         # self.graph_height_biomes()
-        self.img_map = read_tile_body(self.tile_map, self.img_map, self.encyclopedia)
+        self.img_map = read_tile_body(self.tile_map, self.img_map, self.encyclopedia)[:,:,::-1]
         self.img_map = cv2.resize(self.img_map, (0,0), 
                                   fx=self.ppm, fy=self.ppm, 
                                   interpolation=cv2.INTER_NEAREST
                                 )
 
-    # def graph_height_biomes(self):
-    #     biome_idx = abs(copy(self.tile_map)[:, :, 0].flatten() - len(self.encyclopedia._biomes.keys()))  # Assuming this has values in the range 0-32
-    #     heights = self.tile_map[:, :, 1].flatten()  # Assuming this has values in the range 0-3
-
-    #     fig, ax1 = plt.subplots(figsize=(10, 6))
-
-    #     # Histogram for biome_idx on the primary x-axis
-    #     color = 'tab:blue'
-    #     ax1.set_xlabel('Biome_idx / Height')
-    #     ax1.set_ylabel('Frequency', color=color)
-    #     ax1.hist(biome_idx, bins=np.arange(-0.5, 42, 1), alpha=0.5, label='Biome_idx Slot (0-32)', color=color)
-    #     ax1.tick_params(axis='y', labelcolor=color)
-
-    #     # Instantiate a second axes that shares the same y-axis
-    #     ax2 = ax1.twiny()  # Create a twin x-axis sharing the y-axis
-    #     color = 'tab:red'
-    #     # Histogram for heights on the secondary x-axis
-    #     ax2.hist(heights, bins=np.arange(-0.875, 3, 0.1), alpha=0.5, label='Heights Slot (0-3)', color=color)
-    #     ax2.tick_params(axis='x', labelcolor=color)
-
-    #     # Add a legend to the plot
-    #     fig.legend(loc="upper right", bbox_to_anchor=(1,1), bbox_transform=ax1.transAxes)
-
-    #     plt.title('Distribution of Biomes and Heights')
-    #     plt.grid(True)
-    #     plt.show()
-    #     print()
 
     def step(self, actions):
-        for action, drone in zip(actions, self.drones):
-
-            # Setting 
+        for drone in self.drones:
+            if drone.crashed:
+                continue
+            
+            action = actions[drone]
             drone.set_motor_powers(action)
+
+            mask, obv = self.return_observation(drone.position)
+            self.discovery_map[mask] = 1
+            drone.observation = obv
+            
+
+            
+
+    def return_observation(self, position, n=4):
+        x = int(position[0])
+        y = int(position[1])
+
+        # Get the shape of the array
+        height, width = self.size
+
+        # Create an array of indices
+        indices_x, indices_y = np.ogrid[:height, :width]
+        
+        # Calculate the squared distance from the point (x, y)
+        distance_squared = (indices_x - y)**2 + (indices_y - x)**2
+        
+        # Create a mask where the squared distance is less than or equal to n squared
+        mask = distance_squared <= n**2
+        
+        # Use the mask to select the values within the radius
+        obv = copy(self.tile_map[mask])
+
+        return mask, obv
+
 
     def render(self):
         if not pygame.get_init():
             pygame.init()
+        
+        background = copy(self.img_map)
+        map_mask = cv2.resize(copy(self.discovery_map), (0,0), 
+                                  fx=self.ppm, fy=self.ppm, 
+                                  interpolation=cv2.INTER_NEAREST
+                                ).astype(bool)
+        background[~map_mask] = (background[~map_mask] * self.darkening_factor)
+
+        self.background_surface = pygame.surfarray.make_surface(background)
 
         self.screen.blit(self.background_surface, (0, 0))
 
@@ -237,7 +265,7 @@ class landscapev0(ParallelEnv):
             rect, drone_color = drone.render(self.ppm)
             pygame.draw.rect(self.screen, drone_color, rect)
 
-    
+
         pygame.display.flip()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:

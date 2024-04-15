@@ -17,6 +17,7 @@ class QuadDrone:
         self.time_step = 0.01  # Time step for simulation in seconds
 
         self.crashed = False
+        self.observation = None
 
     def set_motor_powers(self, powers):
         """Sets the power for each motor and updates the drone's state."""
@@ -90,8 +91,8 @@ class QuadDrone:
         position = copy(self.position) * scale
         color = [np.clip(255, 0, 255) for i in range(3)]
 
-        rect = pygame.Rect(position[0] - scale//2,
-                           position[1] - scale//2,
+        rect = pygame.Rect(position[1] - scale//2,
+                           position[0] - scale//2,
                            scale,
                            scale,
                            )
