@@ -71,7 +71,7 @@ def write_tile_body(tiles: np.array, board: BoardBox, encyclopedia):
             box = board.get_element(x=column, y=line)
             biome_name = box._biome._name
             biome_index = list(encyclopedia._biomes.keys()).index(biome_name)
-            tiles[column, line] = np.array([biome_index, box._height])
+            tiles[column, line] = np.array([biome_index])
 
     return tiles
 
@@ -79,7 +79,7 @@ def write_tile_body(tiles: np.array, board: BoardBox, encyclopedia):
 def read_tile_body(tiles: np.array, img: np.array, encyclopedia):
     for line in range(tiles.shape[0]):
         for column in range(tiles.shape[1]):
-            biome_index = int(tiles[line, column][0])
+            biome_index = int(tiles[line, column])
             color = list(encyclopedia._biomes.values())[biome_index]._ground_color.get_rgb()
             color = [int(i) for i in color.split()][::-1]
             img[column, line] = color

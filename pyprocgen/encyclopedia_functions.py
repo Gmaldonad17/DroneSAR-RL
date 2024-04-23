@@ -1664,7 +1664,7 @@ def encyclopedia_creation() -> Encyclopedia:
     add_in_dict(
         dict_biomes,
         Biome(
-            name="hint",
+            name="clue",
             temperature_min=0.0,
             temperature_max=0.0,
             pluviometry_min=0.0,

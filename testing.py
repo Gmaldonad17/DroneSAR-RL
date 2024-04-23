@@ -1,8 +1,6 @@
 import numpy as np
 from pettingzoo.butterfly import cooperative_pong_v5
-
 from custom_environment import prison_game, landscapev0
-
 from pettingzoo.test import parallel_api_test
 
 
@@ -15,8 +13,8 @@ observations, infos = env.reset()
 done = False
 
 # Loop until the game is done
-all_actions = np.array([[1, 0, 0, 0], [1, 1, 0, 0], [0, 0, 1, 0], [0, 0, 1, 1],
-                        [0, 1, 0, 0], [0, 1, 1, 0], [1, 0, 0, 1], [0, 0, 0, 1]])
+all_actions = np.array([[0, 1, 0, 0], [1, 1, 0, 0], [0, 0, 1, 0], [0, 0, 1, 1],
+                        [0, 1, 0, 0], [1, 1, 0, 0], [1, 0, 0, 1], [0, 0, 0, 1]])
 actions = {}
 while not done:
     # actions = {}
@@ -30,9 +28,12 @@ while not done:
     # observations, rewards, terminations, truncations, infos = env.step(actions)
     
     # Render the current state of the environment
-    env.step(actions)
+    _, _ = env.step(actions)
     env.render()
     
+    if env.time_steps > env.terminal_time_steps:
+        options = {'reset_map': 0}
+        observations, infos = env.reset(options=options)
     # Check if the game is done (either terminated or truncated)
     # if any(terminations.values()) or any(truncations.values()):
         # done = True
