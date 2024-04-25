@@ -19,25 +19,29 @@ done = False
 for agent in env.drones:
     print("-----------------")
     print(observations[agent])
+
+count=0
 while not done:
+    count=count+1
+    print("count:",count)
+    if count==148:
+        print("stop")
     actions = {}
     for agent in env.drones:
         action = agents[agent].act(observations[agent])
         actions[agent] = action
-
+    print("artion for 0",actions[env.drones[0]])
     # 只有rewards和done被返回
-    rewards, done = env.step(actions)
+    #next_observations, rewards, done, infos = env.step_ddpg(actions)
+    # to be updated
+    next_observations, rewards, done,_= env.step_ddpg(actions)
     env.render()
 
-
-
-    # 创建一个空的infos字典
+    # to be updated
     infos = {agent: {} for agent in env.drones}
 
     # 更新代理
     for agent in env.drones:
-        # 假设next_observations与当前observations相同
-        next_observations = observations
         action_patterns = [
             [0, 1, 0, 0], [1, 1, 0, 0], [0, 0, 1, 0], [0, 0, 1, 1],
             [0, 1, 0, 0], [1, 1, 0, 0], [1, 0, 0, 1], [0, 0, 0, 1]

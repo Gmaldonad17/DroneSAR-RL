@@ -49,6 +49,7 @@ class DDPGAgent:
         ]
 
         state = np.expand_dims(state, axis=0)
+        print("shape of state:",state.shape)
         action_probs = self.actor(state)  # Actor网络输出八种动作模式的概率
         action_index = np.argmax(action_probs.numpy())  # 找到概率最高的索引
         return action_patterns[action_index]
