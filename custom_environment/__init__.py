@@ -1,1 +1,2 @@
 from custom_environment.landscape.landscape import landscapev0
+from custom_environment.prison_game.prison_game import prison_game
