@@ -116,7 +116,27 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
         pygame.display.set_caption("Landscape Map")
 
         return None, None
-    
+
+    def reset_ddpg(self, seed=None, options={}):
+        self.reset_map(options)
+        self.reset_locations(options)
+        self.read_map()
+        self.reset_drones(options)
+        self.reset_heatmap(options)
+
+        self.done = False
+        self.rewards = 0
+        self.time_steps = 0
+
+        self.discovery_map = np.zeros(self.size)
+
+        self.screen = pygame.display.set_mode(self.img_map.shape[:2])
+        pygame.display.set_caption("Landscape Map")
+        observations = {drone: drone.observation[:48] for drone in self.drones}
+        infos = {}
+
+        return observations, infos
+
     def reset_map(self, options):
         if not options.get('reset_map', 1):
             if len(self.original_tiles):
@@ -363,6 +383,68 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
         self.time_steps += 1 
 
         return self.rewards, self.done
+
+    def step_ddpg(self, actions):
+        new_heatmap = np.zeros(self.size)
+
+        self.rewards = 0
+
+        for drone in self.drones:
+            if drone.crashed:
+                self.rewards -= 100
+                continue
+
+            action = actions[drone]
+            drone.set_motor_powers(action)
+
+            mask, obv = self.return_observation(drone.position)
+            # mask = np.transpose(dis_mask, axes=(1, 0))
+            discovered_tiles = sum(~self.discovery_map[mask].astype(bool)) * self.reward_values['tiles']
+            self.rewards += discovered_tiles
+
+            clues_obved = np.where(self.tile_map[mask] == self.clue_index)[0]  # - len(self.tile_map[mask])
+            if len(clues_obved):
+                # If any of the observed clues have not been discovered
+                clue_discovered = ~self.discovery_map[mask][clues_obved].astype(bool)
+                if clue_discovered.any():
+                    self.rewards += sum(clue_discovered) * self.reward_values['clue']
+
+            self.discovery_map[mask] = 1
+
+            if self.discovery_map[*self.objective]:
+                self.done = True
+                self.rewards = self.reward_values['objective']
+
+            new_heatmap = np.maximum(self.gaussian_heatmap(drone.position), new_heatmap)
+
+            drone.observation = obv
+            if drone.heatmap is None:
+                drone.heatmap = self.gaussian_heatmap(drone.position)
+            else:
+                drone.heatmap -= self.heatmap_decay
+                drone.heatmap = np.clip(drone.heatmap, 0, 1)
+                drone.heatmap = np.maximum(drone.heatmap, self.gaussian_heatmap(drone.position))
+
+        self.heatmap -= self.heatmap_decay
+        self.heatmap = np.clip(self.heatmap, 0, 1)
+        self.heatmap = np.maximum(self.heatmap, new_heatmap)
+
+        if self.time_steps > self.terminal_time_steps:
+            self.done = True
+            distances = []
+            for drone in self.drones:
+                distances.append(self.distance(drone.position))
+
+            avg_distance = np.mean(distances)
+            self.rewards -= avg_distance
+
+        self.time_steps += 1
+        observations = {drone: drone.observation[:48] for drone in self.drones}
+        infos = {}
+        for drone in self.drones:
+            if drone.observation.shape[-1] != 49:
+                print("stop")
+        return observations ,self.rewards, self.done, infos
 
 
     def distance(self, position):
