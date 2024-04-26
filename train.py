@@ -37,10 +37,13 @@ def main():
                 
                 batch = torch.tensor(batch)
 
+                # actions = model(batch)
+                # actions = torch.argmax(actions, dim=1)
                 # observations, rewards, terminations, truncations, infos = env.step(actions)
                 # Render the current state of the environment
 
                 reward, done = env.step(actions)
+                print(reward)
                 env.render()
                 
                 if env.time_steps > env.terminal_time_steps:

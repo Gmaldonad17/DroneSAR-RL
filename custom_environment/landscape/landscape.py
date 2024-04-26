@@ -337,7 +337,7 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
             if self.discovery_map[*self.objective]:
                 self.done = True
-                self.rewards = self.reward_values['objective']
+                self.rewards += self.reward_values['objective']
 
             drone.observation = obv
             if drone.heatmap is None:
