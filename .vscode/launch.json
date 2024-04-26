@@ -12,10 +12,11 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Testing 1",
+            "name": "Train Environment",
             "type": "debugpy",
             "request": "launch",
-            "program": "testing.py",
+            "program": "train.py",
+            "args": ["--cfg", "configs/baseline.yaml"],
             "console": "integratedTerminal"
         }
     ]
