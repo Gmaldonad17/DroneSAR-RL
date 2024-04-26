@@ -19,3 +19,12 @@ def mask_undiscovered_tiles(tile_map, discovery_map):
     masked_tile_map[discovery_map == 0] = 0  # or any other value you consider as 'undiscovered' or 'hidden'
     
     return masked_tile_map
+
+def get_model_input(env):
+    base_model_input = [env.position_heatmap.astype(np.float32), 
+                                    env.discovery_map.astype(np.float32), 
+                                    env.features_heatmap.astype(np.float32), 
+                                    (mask_undiscovered_tiles\
+                                    (env.tile_map, env.discovery_map) / len(env.encyclopedia._biomes.keys())).astype(np.float32)]
+    
+    return base_model_input

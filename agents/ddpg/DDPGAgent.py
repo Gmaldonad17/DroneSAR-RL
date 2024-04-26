@@ -1,13 +1,11 @@
 from .model.ddpg import Actor
 from .model.ddpg import Critic
 
-import tensorflow as tf
-from keras import layers, Model
+
 import numpy as np
 from collections import deque
 import random
-import tensorflow as tf
-from keras.optimizers import Adam
+
 import numpy as np
 
 
@@ -50,8 +48,8 @@ class DDPGAgent:
 
         state = np.expand_dims(state, axis=0)
         print("shape of state:",state.shape)
-        action_probs = self.actor(state)  # Actor网络输出八种动作模式的概率
-        action_index = np.argmax(action_probs.numpy())  # 找到概率最高的索引
+        action_probs = self.actor(state)  # Actor output,is a prob of action choosed
+        action_index = np.argmax(action_probs.numpy())  # index of actions with highest prob
         return action_patterns[action_index]
 
     def remember(self, state, action, reward, next_state, done):
@@ -72,36 +70,34 @@ class DDPGAgent:
             self.critic.fit([state, action], target_f, epochs=1, verbose=0)
 
     def step(self, state, action, reward, next_state, done):
-        # 将经验保存到回放缓冲区
+        # save mem to buffer
         self.memory.append((state, action, reward, next_state, done))
 
-        # 检查是否已经积累足够的经验进行学习
-        '''if len(self.memory) > self.batch_size:
-            self.learn()'''
+        if len(self.memory) > self.batch_size:
+            self.learn()
 
     def learn(self):
         minibatch = random.sample(self.memory, self.batch_size)
 
-        # 为简化，这里使用 list 解包
         states, actions, rewards, next_states, dones = zip(*minibatch)
 
-        # 转换为合适的 numpy 格式
+        # to numpy
         states = np.array(states)
         actions = np.array(actions)
         rewards = np.array(rewards)
         next_states = np.array(next_states)
         dones = np.array(dones, dtype=bool)
 
-        # 计算目标 Q 值
+        #  Q 
         not_dones = ~dones
         next_actions = self.target_actor.predict(next_states)
         next_Q_values = self.target_critic.predict([next_states, next_actions])
         target_Q_values = rewards + self.gamma * next_Q_values * not_dones
 
-        # 更新 Critic 网络
+        # update Critic
         critic_loss = self.critic.train_on_batch([states, actions], target_Q_values)
 
-        # 更新 Actor 网络：这里使用梯度翻转技术（需要自定义训练循环）
+        # update Actor
         with tf.GradientTape() as tape:
             actions = self.actor(states, training=True)
             Q_values = self.critic([states, actions], training=True)
@@ -109,7 +105,7 @@ class DDPGAgent:
         actor_grads = tape.gradient(actor_loss, self.actor.trainable_variables)
         self.actor_optimizer.apply_gradients(zip(actor_grads, self.actor.trainable_variables))
 
-        # 软更新目标网络
+        #
         self.update_target_network()
 
 
