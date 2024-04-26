@@ -12,6 +12,7 @@ from pyprocgen import BoardBox, Seed, Box
 from pyprocgen.decisional import generate_box
 from pyprocgen.encyclopedia_functions import encyclopedia_creation
 from pyprocgen.image_creation import  write_image_body, write_tile_body, read_tile_body
+from utils import mask_undiscovered_tiles
 
 
 class landscapev0(ParallelEnv): # Unify X, Y CORDS
@@ -24,15 +25,14 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
                  darkening_factor: float = 0.5,
                  landscape_size: int = 128,
                  center_percent: float = 0.15,
-                 clues = [
-                     [0.10, 0.20], [0.10, 0.20], [0.10, 0.20],
-                     [0.20, 0.30], [0.20, 0.30],
-                     [0.30, 0.40], [0.30, 0.40], 
-                 ],
+                 clues: list = [],
                  map_seed=None,
                  heatmap_decay: float = 0.013,
                  terminal_time_steps: int = 500,
-                 num_drones: int = 8
+                 num_drones: int = 8,
+                 feature_baseline = 0.1,
+                 drone_config: dict = {},
+                 reward_values: dict = {},
                  ) -> None:
         
         # Basic configuration
@@ -41,23 +41,23 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
         self.size = (landscape_size, landscape_size)
         self.center_percent = center_percent
         self.clues_percents = clues
+        self.feature_baseline = feature_baseline
         
         # Simulation state
         self.map_seed = map_seed if map_seed is not None else Seed()
         self.heatmap_decay = heatmap_decay
         self.terminal_time_steps = terminal_time_steps
-        self.drones = [QuadDrone() for _ in range(num_drones)]
+        self.drones = [QuadDrone(**drone_config) for _ in range(num_drones)]
         
         # Internal mappings and states
         self.home_base = None
         self.objective = None
-        self.heatmap = None
         self.done = False
         self.clues = []
         self.original_tiles = [] # [home_base, objective, *clues]
         self.rewards = 0
         self.time_steps = 0
-        self.reward_values = {'tiles': 1, 'crash': -100, 'clue': 50, 'objective': 100}
+        self.reward_values = reward_values
 
         self.drone_starts = [
             [3, -1], [3, 1],
@@ -71,10 +71,13 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
         self.tile_map = np.zeros(self.size)
         self.img_map = np.zeros((*self.size, 3))
         self.discovery_map = np.zeros(self.size)
+        self.position_heatmap = np.zeros(self.size)
+        self.features_heatmap = np.zeros(self.size) + self.feature_baseline
         
         self.encyclopedia = encyclopedia_creation()
         self.clue_index = list(self.encyclopedia._biomes.keys()).index('clue')
         self.objective_index = list(self.encyclopedia._biomes.keys()).index('objective')
+        self.mountain_index = list(self.encyclopedia._biomes.keys()).index('mountain')
 
     def generate_map(self, map):
 
@@ -95,6 +98,8 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
         return map
 
     def reset(self, seed=None, options={}):
+
+        self.discovery_map = np.zeros(self.size)
         
         self.reset_map(options)
         self.reset_locations(options)
@@ -106,7 +111,6 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
         self.rewards = 0
         self.time_steps = 0
 
-        self.discovery_map = np.zeros(self.size)
 
         self.screen = pygame.display.set_mode(self.img_map.shape[:2])
         pygame.display.set_caption("Landscape Map")
@@ -117,16 +121,20 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
         if not options.get('reset_map', 1):
             if len(self.original_tiles):
                 for i, special_tile in enumerate([self.home_base, self.objective, *self.clues]):
-                    biome_name = list(self.encyclopedia._biomes.keys())[self.original_tiles[i]]
                     self.map.set_element(
-                        value=Box(self.encyclopedia._biomes[biome_name], 0.0, 0.0, 0.0),
-                        x=special_tile[0],
-                        y=special_tile[1]
+                    value=generate_box(
+                        self.encyclopedia,
+                        special_tile[0],
+                        special_tile[1],
+                        self.map_seed
+                    ),
+                    x=special_tile[0],
+                    y=special_tile[1]
                     )
                 self.read_map()
             return
 
-        if options.get('map_seed', 0):
+        if options.get('map_seed', 1):
             self.map_seed=Seed()
 
         self.map = self.generate_map(self.map)
@@ -137,7 +145,12 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
             return
         
         water_tiles = 11 # Last 10 index are water
+        self.mountain_mask = (self.tile_map == self.mountain_index)
+        self.mountain_mask_blur = cv2.GaussianBlur(self.mountain_mask.astype(np.float32), (0, 0), sigmaX=1, sigmaY=1)
+        self.mountain_mask_blur[self.mountain_mask_blur > 0] = 1
+
         land_mask = self.tile_map < len(self.encyclopedia._biomes.keys()) - water_tiles
+        land_mask = ~self.mountain_mask_blur.astype(bool) & land_mask
 
         # Create a center mask based on the desired radius
         center = (self.size[1] // 2, self.size[0] // 2)
@@ -194,7 +207,6 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
                         y=clue_location[1]
                     )
 
-        print()
         
 
     def reset_drones(self, options):
@@ -231,21 +243,26 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
             return picked
         else:
             # Deal with this option later
-            print("No valid location found for home base")
-            return None
+            print("No valid location found")
+            return (0, 0)
 
 
     def reset_heatmap(self, options):
         if not options.get('reset_heatmap', 1):
             return
          
-        self.heatmap = np.zeros(self.size)
+        self.position_heatmap = np.zeros(self.size)
+        self.features_heatmap = np.zeros(self.size) + self.feature_baseline
 
         for drone in self.drones:
-            self.heatmap = np.maximum(self.gaussian_heatmap(drone.position), self.heatmap)
+            position_heatmap = self.gaussian_heatmap(drone.position)
+            drone.heatmap = position_heatmap
+            self.position_heatmap = np.maximum(position_heatmap, self.position_heatmap)
 
-        print()
-
+            mask, obv = self.return_observation(drone.position)
+            drone.observation = obv
+            self.discovery_map[mask] = 1
+        
     def read_map(self,):
         self.img_map = np.zeros((*self.size, 3))
         self.tile_map = write_tile_body(self.tile_map, self.map, self.encyclopedia)
@@ -256,7 +273,7 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
                                   interpolation=cv2.INTER_NEAREST
                                 )
 
-    def gaussian_heatmap(self, center, sigma=2.0):
+    def gaussian_heatmap(self, center, sigma=2.0, heatmap_addition=0):
         """
         Create a heatmap with a Gaussian blur applied around a single point.
         
@@ -269,7 +286,7 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
             numpy.ndarray: A grid_size x grid_size heatmap with a blurred Gaussian point.
         """
         # Create an empty heatmap
-        heatmap = np.zeros(self.size, dtype=np.float32)
+        heatmap = np.zeros(self.size, dtype=np.float32) + heatmap_addition
         
         # Draw a single point on the heatmap
         cv2.circle(heatmap, center.astype(int)[::-1], radius=0, color=1, thickness=-1)  # 'thickness=-1' fills the circle
@@ -289,12 +306,19 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
         for drone in self.drones:
             if drone.crashed:
-                self.rewards -= 100
                 continue
             
-            action = actions[drone]
+            action = actions.get(drone, np.zeros(4))
             drone.set_motor_powers(action)
 
+            
+            if any(drone.position > self.size[0]-1) or any(drone.position < 0) or self.mountain_mask[*drone.position.astype(int)]:
+                drone.crashed = True
+                self.rewards += self.reward_values['crash']
+
+            position_heatmap = self.gaussian_heatmap(drone.position)
+            new_heatmap = np.maximum(new_heatmap, position_heatmap)
+            
             mask, obv = self.return_observation(drone.position)
             # mask = np.transpose(dis_mask, axes=(1, 0))
             discovered_tiles = sum(~self.discovery_map[mask].astype(bool)) * self.reward_values['tiles']
@@ -306,14 +330,14 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
                 clue_discovered = ~self.discovery_map[mask][clues_obved].astype(bool)
                 if clue_discovered.any():
                     self.rewards += sum(clue_discovered) * self.reward_values['clue']
+                    self.features_heatmap = np.maximum(self.features_heatmap, position_heatmap)
 
             self.discovery_map[mask] = 1
+            self.features_heatmap[self.discovery_map.astype(bool) & self.mountain_mask] = 0
 
             if self.discovery_map[*self.objective]:
                 self.done = True
                 self.rewards = self.reward_values['objective']
-
-            new_heatmap = np.maximum(self.gaussian_heatmap(drone.position), new_heatmap)
 
             drone.observation = obv
             if drone.heatmap is None:
@@ -323,9 +347,9 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
                 drone.heatmap = np.clip(drone.heatmap, 0, 1)
                 drone.heatmap = np.maximum(drone.heatmap, self.gaussian_heatmap(drone.position))
 
-        self.heatmap -= self.heatmap_decay
-        self.heatmap = np.clip(self.heatmap, 0, 1)
-        self.heatmap = np.maximum(self.heatmap, new_heatmap)
+        self.position_heatmap -= self.heatmap_decay
+        self.position_heatmap = np.clip(self.position_heatmap, 0, 1)
+        self.position_heatmap = np.maximum(self.position_heatmap, new_heatmap)
 
         if self.time_steps > self.terminal_time_steps:
             self.done = True
@@ -388,14 +412,21 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
 
         pygame.display.flip()
-        self.render_heatmap()
+        self.render_heatmap(self.features_heatmap, "Clue Heatmap")
+        self.render_heatmap(self.mountain_mask_blur, "Mountain Heatmap")
+        self.render_heatmap(self.position_heatmap, "Position Heatmap")
+        # self.render_heatmap(self.discovery_map, "Discovery Heatmap")
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
 
-    def render_heatmap(self,):
-        heatmap_normalized = cv2.normalize(self.heatmap, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+    def render_heatmap(self, heatmap_normalized, name='Heatmap'):
+        
+        # og_value = heatmap[0, 0]
+        # heatmap[0, 0] = 1
+        # heatmap_normalized = cv2.normalize(heatmap, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+        # heatmap_normalized[0, 0] = og_value
 
         # Convert to 8-bit (0-255) and apply colormap
         heatmap_8bit = np.uint8(255 * heatmap_normalized)  # Scale to [0, 255]
@@ -406,5 +437,5 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
                                 )
 
         # Optionally, display using matplotlib to compare
-        cv2.imshow("Heatmap", colored_heatmap)  # Convert BGR to RGB
+        cv2.imshow(name, colored_heatmap)  # Convert BGR to RGB
         cv2.waitKey(1)

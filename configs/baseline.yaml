@@ -1,0 +1,30 @@
+
+environment:
+  pixels_per_meter: 1
+  darkening_factor: 0.5
+  landscape_size: 128
+  center_percent: 0.15
+  clues: [[0.10, 0.20], [0.10, 0.20], [0.10, 0.20], 
+          [0.20, 0.30], [0.20, 0.30], [0.30, 0.40], 
+          [0.30, 0.40], ]
+  map_seed: null
+  heatmap_decay: 0.013
+  terminal_time_steps: 100
+  num_drones: 8
+  feature_baseline: 0.1
+
+  drone_config:
+    pixel_size: 6
+    mass: 0.5
+    max_motor_thrust: 10.5
+    time_step: 0.12
+
+  reward_values:
+    tiles: 1
+    crash: -100
+    clue: 50
+    objective: 100
+
+max_power_steps: 1
+len_eps: 4
+episodes: 10
