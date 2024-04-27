@@ -1,26 +1,3 @@
-# ==========================================================
-# INFORMATIONS SUR CE PACKAGE :
-# -----------------------------
-# UTILITÉ DE SON CONTENU :
-# Définir la classe BoardBox, un tableau de Box en 2D
-# -----------------------------
-# CONTENU :
-# + __slots__
-# + HINTS
-# + __init__()
-# + GETTERS
-# + SETTERS
-# + add_element()
-# + add_line()
-# + get_element()
-# + get_line()
-# + get_height()
-# + get_width()
-# + set_element()
-# + __str__()
-# + create_empty_board()
-# ==========================================================
-
 from __future__ import annotations
 from typing import List, Optional
 
@@ -31,44 +8,26 @@ from pyprocgen.settings import DEBUG_MOD
 
 
 class BoardBox:
-    ###############################################################
-    ########################## __SLOTS__ ##########################
-    ###############################################################
+
     __slots__ = (
         "_elements"
     )
 
-    ###############################################################
-    ############################ HINTS ############################
-    ###############################################################
+
     _elements: List[List[Optional[Box]]]
 
-    ###############################################################
-    ########################### __INIT__ ##########################
-    ###############################################################
+
     def __init__(self, elements: Optional[List[List[Optional[Box]]]] = None) -> None:
-        # =============================
-        # INFORMATIONS :
-        # -----------------------------
-        # UTILITÉ :
-        # Crée un objet BoardBox, caractérisé par :
-        # - ses éléments (une liste de liste de Box)
-        # =============================
         self.set_elements(elements)
 
-    ###############################################################
-    ########################### GETTERS ###########################
-    ###############################################################
+
     def get_elements(self) -> List[List[Optional[Box]]]:
         return self._elements
 
-    ###############################################################
-    ########################### SETTERS ###########################
-    ###############################################################
+
     def set_elements(self, elements: List[List[Optional[Box]]]) -> None:
         if DEBUG_MOD:
             # Vérification que elements est bien un List[List[Optional[Box]]] :
-            # Vérification que elements est bien un List
 
             # Vérification que elements est bien un List de quelque chose
             if len(elements) == 0:
@@ -115,23 +74,13 @@ class BoardBox:
                 )
         self._elements = elements
 
-    ###############################################################
-    ######################### ADD_ELEMENT #########################
-    ###############################################################
+
     def add_element(
             self,
             element: Optional[Box],
             line: int
     ) -> None:
-        # =============================
-        # INFORMATIONS :
-        # -----------------------------
-        # UTILITÉ :
-        # Ajoute element à la fin de _elements[line]
-        # -----------------------------
-        # PRÉCONDITIONS (uniquement si DEBUG_MOD) :
-        # - 0 < line < len(elements)
-        # =============================
+
         if DEBUG_MOD and (element is not None or not isinstance(element, Box)):
             raise TypeError(
                 "Error: impossible to add an element in a " + type(self).__name__ + "._elements:" +
@@ -140,17 +89,9 @@ class BoardBox:
             )
         self.get_line(line).append(element)
 
-    ###############################################################
-    ########################### ADD_LINE ##########################
-    ###############################################################
+
     def add_line(self, line: Optional[List[Optional[Box]]] = None) -> None:
-        # =============================
-        # INFORMATIONS :
-        # -----------------------------
-        # UTILITÉ :
-        # Ajoute line à la fin de _elements
-        # (si line is None, ajoute [] à la fin de _elements)
-        # =============================
+
         if line is None:
             self.get_elements().append([])
         else:
@@ -178,26 +119,14 @@ class BoardBox:
             else:
                 self.get_elements().append(line)
 
-    ###############################################################
-    ######################### GET_ELEMENT #########################
-    ###############################################################
+
     def get_element(
             self,
             x: Optional[int] = None,
             y: Optional[int] = None,
             position: Optional[Position] = None
     ) -> Optional[Box]:
-        # =============================
-        # INFORMATIONS :
-        # -----------------------------
-        # UTILITÉ :
-        # Renvoie l'élément de self._elements en (y, x) ou en (position.y, position.x)
-        # -----------------------------
-        # PRÉCONDITIONS :
-        # - x et y non None et sont des index valides
-        # OU
-        # - position non None et est un index valide
-        # =============================
+
         if x is not None and y is not None:  # La position est demandée avec x et y
             if DEBUG_MOD:
                 if isinstance(x, int) and isinstance(y, int):  # Vérification que x et y sont des int
@@ -242,19 +171,8 @@ class BoardBox:
                 "but no positional argument is given."
             )
 
-    ###############################################################
-    ########################## GET_LINE ###########################
-    ###############################################################
     def get_line(self, line_number: int) -> List[Optional[Box]]:
-        # =============================
-        # INFORMATIONS :
-        # -----------------------------
-        # UTILITÉ :
-        # Renvoie l'élément en self._elements[line_number]
-        # -----------------------------
-        # PRÉCONDITIONS :
-        # - 0 <= line_number < len(self._elements)
-        # =============================
+
         if DEBUG_MOD:
             if isinstance(line_number, int):
                 if not (0 <= line_number < self.get_height()):
@@ -271,33 +189,15 @@ class BoardBox:
                 )
         return self.get_elements()[line_number]
 
-    ###############################################################
-    ######################### GET_HEIGHT ##########################
-    ###############################################################
+
     def get_height(self) -> int:
-        # =============================
-        # INFORMATIONS :
-        # -----------------------------
-        # UTILITÉ :
-        # Renvoie la hauteur du plateau
-        # =============================
         return len(self.get_elements())
 
-    ###############################################################
-    ########################## GET_WIDTH ##########################
-    ###############################################################
+
     def get_width(self) -> int:
-        # =============================
-        # INFORMATIONS :
-        # -----------------------------
-        # UTILITÉ :
-        # Renvoie la largeur du plateau
-        # =============================
         return len(self.get_elements()[0])
 
-    ###############################################################
-    ######################### SET_ELEMENT #########################
-    ###############################################################
+
     def set_element(
             self,
             value: Optional[Box],
@@ -305,17 +205,7 @@ class BoardBox:
             y: Optional[int] = None,
             position: Optional[Position] = None
     ) -> None:
-        # =============================
-        # INFORMATIONS :
-        # -----------------------------
-        # UTILITÉ :
-        # Set l'élément de self._elements en (y, x) ou (position.y, position.x) à value
-        # -----------------------------
-        # PRÉCONDITIONS :
-        # - x et y non None et sont des index valides
-        # OU
-        # - position non None et est un index valide
-        # =============================
+
         if x is not None and y is not None:  # La position est demandée avec x et y
             if DEBUG_MOD:
                 if isinstance(x, int) and isinstance(y, int):  # Vérification que x et y sont des int
@@ -360,9 +250,7 @@ class BoardBox:
                 "No positional argument is given."
             )
 
-    ###############################################################
-    ########################### __STR__ ###########################
-    ###############################################################
+
     def __str__(self) -> str:
         string = ""
         for line in self.get_elements():
@@ -371,17 +259,8 @@ class BoardBox:
             string += "\n"
         return string
 
-    ###############################################################
-    ##################### CREATE_EMPTY_BOARD ######################
-    ###############################################################
     @classmethod
     def create_empty_board(cls, width: int, height: int) -> BoardBox:
-        # =============================
-        # INFORMATIONS :
-        # -----------------------------
-        # UTILITÉ :
-        # Crée un BoardBox rempli de None, de dimension height x width
-        # =============================
         board = cls()
         board._elements = []
 

@@ -55,6 +55,7 @@ def get_epsilon(episode, total_episodes, initial_epsilon=1.0, min_epsilon=0.01):
     Returns:
     float: The calculated epsilon value.
     """
+    total_episodes -= int(total_episodes * 0.3)
     epsilon = max(min_epsilon, initial_epsilon - (initial_epsilon - min_epsilon) * (episode / total_episodes))
     return epsilon
 
@@ -79,7 +80,7 @@ def main():
     # Loop until the game is done
     pbar = tqdm(range(config.episodes))
 
-    initial_epsilon = 1.0  # Starting with full exploration
+    initial_epsilon = 0.9  # Starting with full exploration
     min_epsilon = 0.01    # Minimum exploration
 
     for episode in pbar:

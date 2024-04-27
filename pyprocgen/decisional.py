@@ -10,6 +10,8 @@
 # - choice_biome()
 # ==========================================================
 
+import numpy as np
+from noise import snoise2
 from pyprocgen import Box, Biome, Encyclopedia, Seed
 from pyprocgen.perlin_noise import SimplexNoise
 

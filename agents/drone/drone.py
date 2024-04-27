@@ -11,7 +11,8 @@ class QuadDrone:
                  velocity=None, 
                  mass=0.5, 
                  max_motor_thrust=10.5, 
-                 time_step=0.01
+                 time_step=0.01,
+                 drag_coefficient = 0.90
                  ):
         
         self.pixel_size = pixel_size
@@ -21,6 +22,7 @@ class QuadDrone:
         self.mass = mass
         self.max_motor_thrust = max_motor_thrust
         self.time_step = time_step
+        self.drag_coefficient = drag_coefficient
 
         self.crashed = False
         self.observation = None
@@ -50,8 +52,8 @@ class QuadDrone:
         acceleration_y = thrust_diff_y / self.mass
 
         # Update velocity (v = u + at)
-        self.velocity[0] += acceleration_y * self.time_step
-        self.velocity[1] += acceleration_x * self.time_step
+        self.velocity[0] += acceleration_y * self.time_step - self.drag_coefficient * self.velocity[0] * self.time_step
+        self.velocity[1] += acceleration_x * self.time_step - self.drag_coefficient * self.velocity[1] * self.time_step
 
         # Update position (s = s0 + vt)
         self.position[0] += self.velocity[0] * self.time_step

@@ -118,25 +118,6 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
         return None, None
 
-    def reset_ddpg(self, seed=None, options={}):
-        self.reset_map(options)
-        self.reset_locations(options)
-        self.read_map()
-        self.reset_drones(options)
-        self.reset_heatmap(options)
-
-        self.done = False
-        self.rewards = 0
-        self.time_steps = 0
-
-        self.discovery_map = np.zeros(self.size)
-
-        self.screen = pygame.display.set_mode(self.img_map.shape[:2])
-        pygame.display.set_caption("Landscape Map")
-        observations = {drone: drone.observation[:48] for drone in self.drones}
-        infos = {}
-
-        return observations, infos
 
     def reset_map(self, options):
         if not options.get('reset_map', 1):

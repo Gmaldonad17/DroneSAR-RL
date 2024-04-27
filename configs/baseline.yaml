@@ -8,7 +8,7 @@ loss_function: smooth_l1_loss
 environment:
   pixels_per_meter: 1
   darkening_factor: 0.5
-  landscape_size: 128
+  landscape_size: 256
   center_percent: 0.15
   clues: [[0.10, 0.20], [0.10, 0.20], [0.10, 0.20], 
           [0.20, 0.30], [0.20, 0.30], [0.30, 0.40], 
@@ -21,9 +21,9 @@ environment:
 
   drone_config:
     pixel_size: 6
-    mass: 0.5
-    max_motor_thrust: 5.0
-    time_step: 0.05
+    mass: 2.0
+    max_motor_thrust: 2.5
+    time_step: 0.1
 
   reward_values:
     tiles: 0.2
