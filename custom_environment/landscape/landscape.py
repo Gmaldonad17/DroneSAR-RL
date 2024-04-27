@@ -82,7 +82,7 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
     def generate_map(self, map):
 
-        for line_number in tqdm(range(self.size[0]), desc="Creating Map"):
+        for line_number in range(self.size[0]): # tqdm(, desc="Creating Map")
             for column_number in range(self.size[1]):
 
                 map.set_element(
@@ -294,7 +294,7 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
                                   interpolation=cv2.INTER_NEAREST
                                 )
 
-    def gaussian_heatmap(self, center, sigma=2.0, heatmap_addition=0):
+    def gaussian_heatmap(self, center, sigma=4.0, heatmap_addition=0):
         """
         Create a heatmap with a Gaussian blur applied around a single point.
         
@@ -394,7 +394,7 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
         return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
     
 
-    def return_observation(self, position, n=4):
+    def return_observation(self, position, n=8):
         x, y = int(position[0]), int(position[1])
         height, width = self.size
 
@@ -435,9 +435,9 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
 
         pygame.display.flip()
-        self.render_heatmap(self.features_heatmap, "Clue Heatmap")
-        self.render_heatmap(self.mountain_mask_blur, "Mountain Heatmap")
-        self.render_heatmap(self.position_heatmap, "Position Heatmap")
+        # self.render_heatmap(self.features_heatmap, "Clue Heatmap")
+        # self.render_heatmap(self.mountain_mask_blur, "Mountain Heatmap")
+        # self.render_heatmap(self.position_heatmap, "Position Heatmap")
         # self.render_heatmap(self.discovery_map, "Discovery Heatmap")
 
         for event in pygame.event.get():

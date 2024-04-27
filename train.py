@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import argparse
+from tqdm import tqdm
 from copy import copy
 from custom_environment import landscapev0
 from pettingzoo.test import parallel_api_test
@@ -10,6 +11,7 @@ from utils import Metrics
 from agents import DQN
 import torch.optim as optim
 from torch.nn.functional import smooth_l1_loss
+from torch.optim.lr_scheduler import StepLR
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
@@ -25,15 +27,22 @@ def main():
     model = eval(config.model_name)(
         config.model_config.in_channels, 
         len(all_actions)).to(device)
-    optimizer = optim.Adam(model.parameters(),lr=0.001)
+    
+    # Optimizer setup
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    # Scheduler setup
+    scheduler = StepLR(optimizer, step_size=200, gamma=0.99)
     
     loss_func = eval(config.loss_function)
 
     done = False
 
     # Loop until the game is done
-    for _ in range(config.episodes):
-        for _ in range(config.len_eps):
+    pbar = tqdm(range(config.episodes))
+
+    for episode in pbar:
+        for iter in range(config.len_eps):
             while not done:
                 actions = {}
                 # Inputs shared between all drones
@@ -51,7 +60,7 @@ def main():
                     actions[drone] = all_actions[np.argmax(action.cpu().detach().numpy())]
 
                 reward, done = env.step(actions)
-
+                
                 batch = []
                 next_state_base = get_model_input(env)
                 for i, agent in enumerate(env.drones):
@@ -62,10 +71,13 @@ def main():
                 expected_q_value = reward + config.gamma * next_q_value * (1 - done)
 
                 loss = loss_func(q_values, expected_q_value.detach())
-                print(reward)
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+                scheduler.step()
+
+                current_lr = scheduler.get_last_lr()[0]
+                pbar.set_description(f"LR: {current_lr:.6f}")
 
                 env.render()
                 # Check if the first clue has been found
