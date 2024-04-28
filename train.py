@@ -4,6 +4,7 @@ import argparse
 from tqdm import tqdm
 from copy import copy
 from custom_environment import landscapev0
+from torch.nn.utils import clip_grad_norm_
 from pettingzoo.test import parallel_api_test
 from utils import generate_motor_actions, mask_undiscovered_tiles, get_model_input
 from configs import config, parse_args
@@ -55,7 +56,7 @@ def get_epsilon(episode, total_episodes, initial_epsilon=1.0, min_epsilon=0.01):
     Returns:
     float: The calculated epsilon value.
     """
-    total_episodes -= int(total_episodes * 0.3)
+    total_episodes -= int(total_episodes * 0.5)
     epsilon = max(min_epsilon, initial_epsilon - (initial_epsilon - min_epsilon) * (episode / total_episodes))
     return epsilon
 
@@ -70,7 +71,7 @@ def main():
         len(all_actions)).to(device)
     
     # Optimizer and scheduler setup
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=0.000001)
     scheduler = StepLR(optimizer, step_size=200, gamma=0.99)
     
     loss_func = smooth_l1_loss
@@ -80,20 +81,24 @@ def main():
     # Loop until the game is done
     pbar = tqdm(range(config.episodes))
 
-    initial_epsilon = 0.9  # Starting with full exploration
-    min_epsilon = 0.01    # Minimum exploration
+    initial_epsilon = 0.7 # Starting with exploration
+    min_epsilon = 0.0 # Minimum exploration
 
     for episode in pbar:
         current_epsilon = get_epsilon(episode, config.episodes, initial_epsilon, min_epsilon)
         observations, infos = env.reset()
         done = False
+        total_reward = 0
         for iter in range(config.len_eps):
             while not done:
                 actions = {}
                 batch = []
                 base_model_input = get_model_input(env)
                 for i, agent in enumerate(env.drones):
-                    batch.append(base_model_input + [agent.heatmap])
+                    
+                    heatmap = agent.heatmap + (i/(len(env.drones)+4))
+                    # env.render_heatmap(heatmap, str(i))
+                    batch.append(base_model_input + [heatmap])
                 
                 batch = torch.tensor(np.array(batch)).to(device)
                 q_values = model(batch)
@@ -103,12 +108,15 @@ def main():
                     actions[drone] = all_actions[action]
                 
                 reward, done = env.step(actions)
+                if reward > 1:
+                    print(end="")
+                total_reward += reward
                 
                 if not done:
                     batch_next = []
                     next_state_base = get_model_input(env)
                     for i, agent in enumerate(env.drones):
-                        batch_next.append(next_state_base + [agent.heatmap])
+                        batch_next.append(next_state_base + [agent.heatmap + (i/(len(env.drones)+4))])
                     batch_next = torch.tensor(np.array(batch_next)).to(device)
 
                     next_q_values = model(batch_next)
@@ -119,6 +127,8 @@ def main():
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()
+
+                    clip_grad_norm_(model.parameters(), max_norm=1.0)
 
                 env.render()
                 metric_object.FirstClueFind(env)
@@ -132,9 +142,12 @@ def main():
             pbar.set_description(f"LR: {current_lr:.6f}, Epsilon: {current_epsilon:.4f}")
             done = False
 
-        metric_object.UpdateMetrics(env)
+        metric_object.UpdateMetrics(env, total_reward/config.len_eps)
         _, _ = env.reset()
         done = False 
+    
+    metric_object.GraphResults()
+    print()
 
 if __name__ == "__main__":
     main()

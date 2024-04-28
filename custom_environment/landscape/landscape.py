@@ -12,7 +12,7 @@ from pyprocgen import BoardBox, Seed, Box
 from pyprocgen.decisional import generate_box
 from pyprocgen.encyclopedia_functions import encyclopedia_creation
 from pyprocgen.image_creation import  write_image_body, write_tile_body, read_tile_body
-from utils import mask_undiscovered_tiles
+from utils import mask_undiscovered_tiles, calculate_action_dissimilarity
 
 
 class landscapev0(ParallelEnv): # Unify X, Y CORDS
@@ -275,7 +275,7 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
                                   interpolation=cv2.INTER_NEAREST
                                 )
 
-    def gaussian_heatmap(self, center, sigma=4.0, heatmap_addition=0):
+    def gaussian_heatmap(self, center, sigma=4.0, heatmap_addition=0, border_width=10):
         """
         Create a heatmap with a Gaussian blur applied around a single point.
         
@@ -293,9 +293,13 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
         # Draw a single point on the heatmap
         cv2.circle(heatmap, center.astype(int)[::-1], radius=0, color=1, thickness=-1)  # 'thickness=-1' fills the circle
         
+        heatmap = np.pad(heatmap, pad_width=border_width, mode='constant', constant_values=0)
+
+
         # Apply Gaussian blur to the heatmap
         heatmap = cv2.GaussianBlur(heatmap, (0, 0), sigmaX=sigma, sigmaY=sigma)
-        
+        heatmap = heatmap[border_width:-border_width, border_width:-border_width]
+
         # Normalize the heatmap to [0, 1]
         heatmap = cv2.normalize(heatmap, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
         
@@ -305,6 +309,26 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
         new_heatmap = np.zeros(self.size)
 
         self.rewards = 0
+
+        action_dissimilarity = calculate_action_dissimilarity(actions)
+        self.rewards += action_dissimilarity * self.reward_values['action_diversity']
+        positions = np.array([drone.position for drone in self.drones if not drone.crashed])
+
+        # Using broadcasting to find distances between all pairs of drones
+        if len(positions) > 1:
+            diff = positions[:, np.newaxis, :] - positions[np.newaxis, :, :]
+            dist_matrix = np.linalg.norm(diff, axis=2)
+            # Only consider upper triangle minus diagonal to avoid redundant pairs
+            total_distance = np.sum(np.triu(dist_matrix, k=1))
+            num_pairs = len(positions) * (len(positions) - 1) / 2
+
+            # Only add to rewards if there are at least one pair of drones
+            if num_pairs > 0:
+                average_distance = total_distance / num_pairs
+                self.rewards += average_distance * self.reward_values['distance_spread']  # Reward scaling factor
+        else:
+            total_distance = 0
+            num_pairs = 0
 
         terminate = []
         for drone in self.drones:
@@ -375,7 +399,7 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
         return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
     
 
-    def return_observation(self, position, n=8):
+    def return_observation(self, position, n=6):
         x, y = int(position[0]), int(position[1])
         height, width = self.size
 
@@ -418,7 +442,7 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
         pygame.display.flip()
         # self.render_heatmap(self.features_heatmap, "Clue Heatmap")
         # self.render_heatmap(self.mountain_mask_blur, "Mountain Heatmap")
-        # self.render_heatmap(self.position_heatmap, "Position Heatmap")
+        self.render_heatmap(self.position_heatmap, "Position Heatmap")
         # self.render_heatmap(self.discovery_map, "Discovery Heatmap")
 
         for event in pygame.event.get():

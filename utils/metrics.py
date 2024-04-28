@@ -56,7 +56,8 @@ class Metrics():
         plt.show()
 
         
-    def UpdateMetrics(self, environment):
+    def UpdateMetrics(self, environment, reward):
+        self.rewardsPerEpisode.append(reward)
         # Get position of the objective
         xObj, yObj = environment.objective[0], environment.objective[1]
         total_distance = 0

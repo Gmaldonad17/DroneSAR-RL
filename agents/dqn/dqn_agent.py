@@ -5,13 +5,92 @@ import numpy as np
 import random
 from collections import deque, OrderedDict
 
+class ResBlock(nn.Module):
+    def __init__(self, chan, use_SiLU=True):
+        super().__init__()
+        activation = nn.SiLU if use_SiLU else nn.ReLU
+        self.net = nn.Sequential(
+            nn.Conv2d(chan, chan, 3, padding=1),
+            activation(),
+            nn.Conv2d(chan, chan, 3, padding=1),
+            activation(),
+            nn.Conv2d(chan, chan, 1),
+        )
+
+    def forward(self, x):
+        return self.net(x) + x
 
 # Define the DQN network
 class DQN(nn.Module):
     def __init__(self,
                  in_channels=5,
-                 num_actions=16):
+                 num_actions=16,
+                 num_layers_resnet=3,
+                 ):
         super(DQN, self).__init__()
+        self.num_actions = num_actions
+        
+        # Initialize convolution layers
+        # self.init_conv_layers = nn.Sequential(OrderedDict([
+        #     ('conv1', nn.Conv2d(in_channels, 16, kernel_size=1, stride=1)),
+        #     ('relu1', nn.ReLU()),
+        #     ('conv2', nn.Conv2d(32, 32, kernel_size=4, stride=2)),
+        #     ('relu2', nn.ReLU()),
+        #     ('conv3', nn.Conv2d(32, 4, kernel_size=3, stride=1)),
+        #     ('relu3', nn.ReLU())
+        # ]))
+
+        # # Initialize fully connected layers
+        # self.fc_layers = nn.Sequential(OrderedDict([
+        #     ('flatten', nn.Flatten()),
+        #     ('fc1', nn.LazyLinear(512)),
+        #     ('relu4', nn.ReLU()),
+        #     ('fc2', nn.Linear(512, self.num_actions))
+        # ]))
+
+        self.init_conv = nn.Sequential(OrderedDict([
+            ('conv1', nn.Conv2d(in_channels=in_channels, out_channels=16, kernel_size=1, stride=1)),
+            ('conv2', nn.Conv2d(in_channels=16, out_channels=16, kernel_size=4, stride=2))
+        ]))
+
+        resnet_layers = []
+        for _ in range(num_layers_resnet):
+            resnet_layers.append(ResBlock(chan=16))
+        self.resnet_layers = nn.Sequential(
+            *resnet_layers
+        )
+
+        self.pose_convs = nn.Sequential(OrderedDict([
+            ('p_conv1', nn.Conv2d(in_channels=16, out_channels=8, kernel_size=4, stride=2)),
+            ('relu1', nn.ReLU()),
+            ('p_conv2', nn.Conv2d(in_channels=8, out_channels=1, kernel_size=2, stride=1)),
+            ('relu2', nn.ReLU()),
+        ]))
+
+        self.out_network = nn.Sequential(
+            nn.Flatten(),
+            nn.LazyLinear(num_actions)
+        )
+
+        # self.net = nn.Sequential(
+        #     ('init conv', self.init_conv),
+        #     ('ResNet', self.resnet_layers),
+        #     ('post convs', self.pose_convs),
+        #     ('out', self.out_network)
+        # )
+
+    def forward(self, x):
+        x = self.init_conv(x)
+        x = self.resnet_layers(x)
+        x = self.pose_convs(x)
+        x = self.out_network(x)
+        return x
+
+class DQNv0(nn.Module):
+    def __init__(self,
+                 in_channels=5,
+                 num_actions=16):
+        super(DQNv0, self).__init__()
         self.num_actions = num_actions
         
         # Initialize convolution layers

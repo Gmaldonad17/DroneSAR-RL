@@ -2,36 +2,38 @@ model_name: 'DQN'
 model_config:
   in_channels: 4
 
-gamma: 0.5
+gamma: 2.00
 loss_function: smooth_l1_loss
 
 environment:
   pixels_per_meter: 1
   darkening_factor: 0.5
-  landscape_size: 256
+  landscape_size: 128
   center_percent: 0.15
   clues: [[0.10, 0.20], [0.10, 0.20], [0.10, 0.20], 
           [0.20, 0.30], [0.20, 0.30], [0.30, 0.40], 
           [0.30, 0.40], ]
   map_seed: null
   heatmap_decay: 0.013
-  terminal_time_steps: 900
-  num_drones: 8
+  terminal_time_steps: 500
+  num_drones: 1
   feature_baseline: 0.5
 
   drone_config:
     pixel_size: 6
     mass: 2.0
-    max_motor_thrust: 2.5
-    time_step: 0.1
+    max_motor_thrust: 2.0
+    time_step: 0.4
 
   reward_values:
-    tiles: 0.2
-    crash: -10
-    clue: 10
-    objective: 30
-    avg: 1.0
+    tiles: -0.0001
+    crash: 1.0
+    clue: -0.55 # 10
+    objective: -1.0 # 30
+    avg: 0.0 # 0.5
+    distance_spread: -0.001 # 001
+    action_diversity: -0.1
 
 max_power_steps: 2
-len_eps: 20
-episodes: 500
+len_eps: 10
+episodes: 35
