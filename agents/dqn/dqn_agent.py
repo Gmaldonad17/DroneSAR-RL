@@ -29,24 +29,6 @@ class DQN(nn.Module):
                  ):
         super(DQN, self).__init__()
         self.num_actions = num_actions
-        
-        # Initialize convolution layers
-        # self.init_conv_layers = nn.Sequential(OrderedDict([
-        #     ('conv1', nn.Conv2d(in_channels, 16, kernel_size=1, stride=1)),
-        #     ('relu1', nn.ReLU()),
-        #     ('conv2', nn.Conv2d(32, 32, kernel_size=4, stride=2)),
-        #     ('relu2', nn.ReLU()),
-        #     ('conv3', nn.Conv2d(32, 4, kernel_size=3, stride=1)),
-        #     ('relu3', nn.ReLU())
-        # ]))
-
-        # # Initialize fully connected layers
-        # self.fc_layers = nn.Sequential(OrderedDict([
-        #     ('flatten', nn.Flatten()),
-        #     ('fc1', nn.LazyLinear(512)),
-        #     ('relu4', nn.ReLU()),
-        #     ('fc2', nn.Linear(512, self.num_actions))
-        # ]))
 
         self.init_conv = nn.Sequential(OrderedDict([
             ('conv1', nn.Conv2d(in_channels=in_channels, out_channels=16, kernel_size=1, stride=1)),
@@ -95,20 +77,22 @@ class DQNv0(nn.Module):
         
         # Initialize convolution layers
         self.init_conv_layers = nn.Sequential(OrderedDict([
-            ('conv1', nn.Conv2d(in_channels, 32, kernel_size=8, stride=4)),
+            ('conv1', nn.Conv2d(in_channels, 8, kernel_size=1, stride=1)),
             ('relu1', nn.ReLU()),
-            ('conv2', nn.Conv2d(32, 32, kernel_size=4, stride=2)),
+            ('conv2', nn.Conv2d(8, 16, kernel_size=1, stride=1)),
             ('relu2', nn.ReLU()),
-            ('conv3', nn.Conv2d(32, 4, kernel_size=3, stride=1)),
-            ('relu3', nn.ReLU())
+            ('conv3', nn.Conv2d(16, 16, kernel_size=2, stride=2)),
+            ('relu3', nn.ReLU()),
+            ('conv4', nn.Conv2d(16, 2, kernel_size=2, stride=2)),
+            ('relu4', nn.ReLU())
         ]))
 
         # Initialize fully connected layers
         self.fc_layers = nn.Sequential(OrderedDict([
             ('flatten', nn.Flatten()),
-            ('fc1', nn.LazyLinear(512)),
+            ('fc1', nn.LazyLinear(1024)),
             ('relu4', nn.ReLU()),
-            ('fc2', nn.Linear(512, self.num_actions))
+            ('fc2', nn.Linear(1024, self.num_actions))
         ]))
 
     def forward(self, x):

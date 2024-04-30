@@ -121,7 +121,7 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
     def reset_map(self, options):
         if not options.get('reset_map', 1):
-            if len(self.original_tiles):
+            if len(self.original_tiles) and options.get('reset_locations', 1):
                 for i, special_tile in enumerate([self.home_base, self.objective, *self.clues]):
                     self.map.set_element(
                     value=generate_box(
@@ -381,21 +381,22 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
         if self.time_steps > self.terminal_time_steps or all(terminate):
             self.done = True
-            distances = []
-            for drone in self.drones:
-                distances.append(self.distance(drone.position))
-            
-            avg_distance = np.mean(distances)
-            self.rewards -= avg_distance * self.reward_values['avg']
+
+        distances = []
+        for drone in self.drones:
+            distances.append(self.distance(drone.position))
+        
+        avg_distance = np.mean(distances)
+        self.rewards -= avg_distance * self.reward_values['avg']
 
         self.time_steps += 1 
 
-        return self.rewards, self.done
+        return self.rewards/10, self.done
 
 
     def distance(self, position):
-        x1, y1 = position
-        x2, y2 = self.objective
+        y1, x1 = position
+        y2, x2 = self.objective
         return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
     
 
@@ -440,10 +441,11 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
 
         pygame.display.flip()
-        # self.render_heatmap(self.features_heatmap, "Clue Heatmap")
+        self.render_heatmap(self.features_heatmap, "Clue Heatmap")
         # self.render_heatmap(self.mountain_mask_blur, "Mountain Heatmap")
         self.render_heatmap(self.position_heatmap, "Position Heatmap")
-        # self.render_heatmap(self.discovery_map, "Discovery Heatmap")
+        self.render_heatmap(self.discovery_map, "Discovery Heatmap")
+        self.render_heatmap(self.drones[0].heatmap, "Self Heatmap")
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:

@@ -9,7 +9,7 @@ from pettingzoo.test import parallel_api_test
 from utils import generate_motor_actions, mask_undiscovered_tiles, get_model_input
 from configs import config, parse_args
 from utils import Metrics
-from agents import DQN
+from agents import DQN, DQNv0
 import torch.optim as optim
 from torch.nn.functional import smooth_l1_loss
 from torch.optim.lr_scheduler import StepLR
@@ -56,14 +56,14 @@ def get_epsilon(episode, total_episodes, initial_epsilon=1.0, min_epsilon=0.01):
     Returns:
     float: The calculated epsilon value.
     """
-    total_episodes -= int(total_episodes * 0.5)
+    total_episodes -= int(total_episodes * 0.1)
     epsilon = max(min_epsilon, initial_epsilon - (initial_epsilon - min_epsilon) * (episode / total_episodes))
     return epsilon
 
 
 def main():
     env = landscapev0(**config.environment)
-    # observations, infos = env.reset()
+    observations, infos = env.reset()
 
     all_actions = generate_motor_actions(max_power_steps=config.max_power_steps)
     model = eval(config.model_name)(
@@ -81,15 +81,17 @@ def main():
     # Loop until the game is done
     pbar = tqdm(range(config.episodes))
 
-    initial_epsilon = 0.7 # Starting with exploration
+    initial_epsilon = 0.0 # Starting with exploration
     min_epsilon = 0.0 # Minimum exploration
 
     for episode in pbar:
         current_epsilon = get_epsilon(episode, config.episodes, initial_epsilon, min_epsilon)
-        observations, infos = env.reset()
+        options = {'reset_map': 0, 'reset_locations': 0}
+        observations, infos = env.reset(options=options)
         done = False
-        total_reward = 0
+        
         for iter in range(config.len_eps):
+            total_reward = 0
             while not done:
                 actions = {}
                 batch = []
@@ -108,8 +110,7 @@ def main():
                     actions[drone] = all_actions[action]
                 
                 reward, done = env.step(actions)
-                if reward > 1:
-                    print(end="")
+
                 total_reward += reward
                 
                 if not done:
@@ -124,6 +125,8 @@ def main():
                     expected_q_value = reward + config.gamma * max_next_q_values.unsqueeze(1) * (1 - int(done))
 
                     loss = loss_func(q_values.gather(1, actions_taken.unsqueeze(1)), expected_q_value.detach())
+                    loss *= abs((reward/10))
+                    
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()
@@ -134,7 +137,7 @@ def main():
                 metric_object.FirstClueFind(env)
 
                 if done:
-                    options = {'reset_map': 0}
+                    options = {'reset_map': 0, 'reset_locations': 0}
                     _, _ = env.reset(options=options)
 
             scheduler.step()
@@ -142,8 +145,8 @@ def main():
             pbar.set_description(f"LR: {current_lr:.6f}, Epsilon: {current_epsilon:.4f}")
             done = False
 
-        metric_object.UpdateMetrics(env, total_reward/config.len_eps)
-        _, _ = env.reset()
+            metric_object.UpdateMetrics(env, total_reward/config.len_eps)
+        # _, _ = env.reset()
         done = False 
     
     metric_object.GraphResults()
