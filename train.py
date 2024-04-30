@@ -20,6 +20,12 @@ args = parse_args()
 # Holds statistics for training
 metric_object = Metrics()
 
+def save_model(model, episode, directory="saved_models", filename="model_checkpoint.pth"):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    path = os.path.join(directory, f"{filename}_{episode}.pth")
+    torch.save(model.state_dict(), path)
+    print(f"Model saved to {path} at episode {episode}")
 
 def epsilon_greedy(q_values, epsilon=0.2):
     """
@@ -84,6 +90,8 @@ def main():
     initial_epsilon = 0.7 # Starting with exploration
     min_epsilon = 0.0 # Minimum exploration
 
+    counter = 0 # for moving obj X times
+
     for episode in pbar:
         current_epsilon = get_epsilon(episode, config.episodes, initial_epsilon, min_epsilon)
         options = {'reset_map': 0, 'reset_locations': 0}
@@ -109,7 +117,7 @@ def main():
                 for action, drone in zip(actions_taken, env.drones):
                     actions[drone] = all_actions[action]
                 
-                reward, done = env.step(actions)
+                reward, done, done_reason = env.step(actions)
 
                 total_reward += reward
                 
@@ -136,9 +144,19 @@ def main():
                 env.render()
                 metric_object.FirstClueFind(env)
 
+
                 if done:
-                    options = {'reset_map': 0, 'reset_locations': 0}
-                    _, _ = env.reset(options=options)
+                    if done_reason == 1:
+                        counter += 1
+                    else:
+                        counter = 0  # Reset counter if the reason is not 1
+                    if counter == 5:
+                        options = {'reset_map': 0, 'reset_locations': 1}  # Assuming a full reset is desired
+                        _, _ = env.reset(options=options)
+                        counter = 0  # Reset the counter after handling the reset
+                    else:
+                        options = {'reset_map': 0, 'reset_locations': 0}
+                        _, _ = env.reset(options=options)
 
             scheduler.step()
             current_lr = scheduler.get_last_lr()[0]
@@ -151,6 +169,8 @@ def main():
     
     metric_object.GraphResults()
     print()
-
+    if episode % 2 == 0:  # Save every 2 episodes
+        save_model(model, episode)
+    
 if __name__ == "__main__":
     main()

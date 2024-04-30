@@ -53,6 +53,7 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
         self.home_base = None
         self.objective = None
         self.done = False
+        self.done_reason = 0 # Init value, 0 is crashed/terminted, 1 is reward
         self.clues = []
         self.original_tiles = [] # [home_base, objective, *clues]
         self.rewards = 0
@@ -365,6 +366,7 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
             if self.discovery_map[*self.objective]:
                 self.done = True
+                self.done_reason = 1
                 self.rewards += self.reward_values['objective']
 
             drone.observation = obv
@@ -381,6 +383,7 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
         if self.time_steps > self.terminal_time_steps or all(terminate):
             self.done = True
+            self.done_reason = 0 #terminted/crashed
 
         distances = []
         for drone in self.drones:
@@ -391,7 +394,7 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
         self.time_steps += 1 
 
-        return self.rewards/10, self.done
+        return self.rewards/10, self.done, self.done_reason
 
 
     def distance(self, position):

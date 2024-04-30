@@ -10,17 +10,19 @@ environment:
   darkening_factor: 0.5
   landscape_size: 128
   center_percent: 0.15
-  clues: [[0.10, 0.20], [0.10, 0.20], [0.10, 0.20], 
-          [0.20, 0.30], [0.20, 0.30], [0.30, 0.40], 
-          [0.30, 0.40], ]
+  clues: [
+    [0.10, 0.20], [0.10, 0.20], [0.10, 0.20],
+    [0.20, 0.30], [0.20, 0.30], [0.20, 0.30],
+    [0.30, 0.40], [0.30, 0.40], [0.30, 0.40],
+    [0.40, 0.50], ]
   map_seed: null
   heatmap_decay: 0.013
-  terminal_time_steps: 400
+  terminal_time_steps: 1500
   num_drones: 8
   feature_baseline: 0.5
 
   drone_config:
-    pixel_size: 6
+    pixel_size: 8
     mass: 1.5
     max_motor_thrust: 5.0
     time_step: 0.3
@@ -35,5 +37,8 @@ environment:
     action_diversity: 0.1
 
 max_power_steps: 2
-len_eps: 25
-episodes: 10
+len_eps: 30
+episodes: 100
+
+save_frequency: 2  # Save model every 10 episodes
+reset_frequency: 5  # Reset object objetive occurs 5 times in a row
