@@ -81,7 +81,7 @@ def main():
     # Loop until the game is done
     pbar = tqdm(range(config.episodes))
 
-    initial_epsilon = 0.0 # Starting with exploration
+    initial_epsilon = 0.7 # Starting with exploration
     min_epsilon = 0.0 # Minimum exploration
 
     for episode in pbar:
