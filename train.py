@@ -97,15 +97,18 @@ def main():
     if not os.path.exists("figs"):
         os.makedirs("figs")
 
+    if not os.path.exists("figs/videos"):
+        os.makedirs("figs/videos")
+
     for episode in pbar:
         current_epsilon = get_epsilon(episode, config.episodes, initial_epsilon, min_epsilon)
         options = {'reset_map': 0, 'reset_locations': 0}
         observations, infos = env.reset(options=options)
         done = False
+        video_writer = cv2.VideoWriter(f'./figs/videos/gameplay_video_episode_{episode}.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 30, (env.img_map.shape[1], env.img_map.shape[0]))        
 
         rewards = []
         for iter in range(config.len_eps):
-            video_writer = cv2.VideoWriter(f'figs/gameplay_video_episode_{iter}.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 30, (env.img_map.shape[1], env.img_map.shape[0]))        
             total_reward = 0
             while not done:
                 actions = {}
@@ -142,7 +145,7 @@ def main():
                     max_next_q_values = torch.max(next_q_values, dim=1)[0]
                     expected_q_value = reward + config.gamma * max_next_q_values.unsqueeze(1) * (1 - int(done))
 
-                    if reward > avg_reward:
+                    if abs(reward) > abs(avg_reward):
 
                         loss = loss_func(q_values.gather(1, actions_taken.unsqueeze(1)), expected_q_value.detach())
                         loss *= abs((reward/10))
@@ -176,7 +179,7 @@ def main():
                     else:
                         options = {'reset_map': 0, 'reset_locations': 0}
                         _, _ = env.reset(options=options)
-                video_writer.release()
+            video_writer.release()
 
             scheduler.step()
             current_lr = scheduler.get_last_lr()[0]
