@@ -20,7 +20,7 @@ environment:
   feature_baseline: 0.5
 
   drone_config:
-    pixel_size: 6
+    pixel_size: 8
     mass: 1.5
     max_motor_thrust: 5.0
     time_step: 0.3
@@ -36,4 +36,7 @@ environment:
 
 max_power_steps: 2
 len_eps: 25
-episodes: 10
+episodes: 100
+
+save_frequency: 2  # Save model every 10 episodes
+reset_frequency: 5  # Reset object objetive occurs 5 times in a row

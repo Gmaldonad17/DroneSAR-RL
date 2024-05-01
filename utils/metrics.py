@@ -1,6 +1,6 @@
 from math import sqrt
 import matplotlib.pyplot as plt
-
+import os
 class Metrics():
     def __init__(self):
         self.rewardsPerEpisode = []
@@ -20,76 +20,80 @@ class Metrics():
             # Save internally how many clues have been found
             self.hintsFound = totalFoundClues
 
-
+   
     # Create graphs showing all results
     def GraphResults(self):
+            
+        if not os.path.exists("figs"):
+            os.makedirs("figs")
+            
         # Plot Reward per episode
         plt.figure(1)
         plt.plot(self.rewardsPerEpisode, label = 'Reward')
         plt.xlabel('Episode')
         plt.ylabel('Reward')
         plt.title('Reward VS Episode')
-        #plt.show()
-        plt.savefig('RewardVSEpisode.png')
-
+        plt.savefig('figs/reward_vs_episode.png')
+        plt.show()
 
         # Plot Average Distance per episode
         plt.figure(2)
+            
+        if not os.path.exists("figs"):
+            os.makedirs("figs")
+            
         plt.plot(self.avgDistanceFromTarget, label = 'Reward')
         plt.xlabel('Episode')
         plt.ylabel('Distance')
         plt.title('Average Distance From Objective VS Episode')
-        #plt.show()
-        plt.savefig('AverageDistanceFromObjectiveVSEpisode.png')
+        plt.savefig('figs/reward_vs_episode.png')
+        plt.show()
 
         # Plot Average steps to complete per episode
         plt.figure(3)
+            
+        if not os.path.exists("figs"):
+            os.makedirs("figs")
+            
         plt.plot(self.avgStepsToComplete, label = 'Reward')
         plt.xlabel('Episode')
         plt.ylabel('Steps')
         plt.title('Average Steps To Find Objective VS Episode')
-        #plt.show()
-        plt.savefig('AverageStepsToFindObjectiveVSEpisode.png')
+        plt.savefig('figs/reward_vs_episode.png')
+        plt.show()
 
         # Plot Average steps to find first hint per episode
         plt.figure(4)
+            
+        if not os.path.exists("figs"):
+            os.makedirs("figs")
+            
         plt.plot(self.avgStepsToFindHint, label = 'Steps to find hint')
         plt.xlabel('Episode')
         plt.ylabel('Steps')
         plt.title('Average Steps To Find Hint VS Episode')
-        #plt.show()
-        plt.savefig('AverageStepsToFindHintVSEpisode.png')
+        plt.savefig('figs/reward_vs_episode.png')
+        plt.show()
 
-        
+            
     def UpdateMetrics(self, environment, reward):
         self.rewardsPerEpisode.append(reward)
-        # Get position of the objective
         xObj, yObj = environment.objective[0], environment.objective[1]
         total_distance = 0
         total_drones = 0
-        # Go through each drone to find distance to objective
         for _, agent in enumerate(environment.drones):
             xDrone, yDrone = agent.position
             total_drones += 1
             total_distance += sqrt((xObj - xDrone)**2 + (yObj - yDrone)**2)
-        # Average drone distance and add average distance to metrics
-        self.avgDistanceFromTarget.append(total_distance/total_drones) 
-        # Add number of steps it took to metrics
-        # If Objective was found, save amount of time it took
-        if environment.discovery_map[yObj,xObj] == 1:
+        self.avgDistanceFromTarget.append(total_distance / total_drones) 
+
+        if environment.discovery_map[yObj, xObj] == 1:
             self.avgStepsToComplete.append(environment.time_steps)
-        # Objective was not found, apply max time steps
         else:
             self.avgStepsToComplete.append(environment.terminal_time_steps)
-        # Add reward to metrics
-
-        # avg time to find hint
-        # If it didn't find a hint, save max time steps
-        if self.hintsFound == 0:
-                self.avgStepsToFindHint.append(environment.terminal_time_steps) # Max out value
-        # Reset hint count for next iteration
+        # Reset hint count for next iteration (ensure this is in the right place in your loop or episode management)
         self.hintsFound = 0
-
+        
 # Goes through each clue and determines if it has been found
 # Returns total number of found clues
 def FoundClues(environment):
