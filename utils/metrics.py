@@ -1,6 +1,6 @@
 from math import sqrt
 import matplotlib.pyplot as plt
-
+import os
 class Metrics():
     def __init__(self):
         self.rewardsPerEpisode = []
@@ -20,43 +20,59 @@ class Metrics():
             # Save internally how many clues have been found
             self.hintsFound = totalFoundClues
 
-
+   
     # Create graphs showing all results
     def GraphResults(self):
+            
+        if not os.path.exists("figs"):
+            os.makedirs("figs")
+            
         # Plot Reward per episode
         plt.figure(1)
         plt.plot(self.rewardsPerEpisode, label = 'Reward')
         plt.xlabel('Episode')
         plt.ylabel('Reward')
         plt.title('Reward VS Episode')
-        plt.savefig('/figs/reward_vs_episode.png')
+        plt.savefig('figs/reward_vs_episode.png')
         plt.show()
 
         # Plot Average Distance per episode
         plt.figure(2)
+            
+        if not os.path.exists("figs"):
+            os.makedirs("figs")
+            
         plt.plot(self.avgDistanceFromTarget, label = 'Reward')
         plt.xlabel('Episode')
         plt.ylabel('Distance')
         plt.title('Average Distance From Objective VS Episode')
-        plt.savefig('/figs/avg_distance_vs_episode.png')
+        plt.savefig('figs/reward_vs_episode.png')
         plt.show()
 
         # Plot Average steps to complete per episode
         plt.figure(3)
+            
+        if not os.path.exists("figs"):
+            os.makedirs("figs")
+            
         plt.plot(self.avgStepsToComplete, label = 'Reward')
         plt.xlabel('Episode')
         plt.ylabel('Steps')
         plt.title('Average Steps To Find Objective VS Episode')
-        plt.savefig('/figs/avg_steps_to_complete_vs_episode.png')
+        plt.savefig('figs/reward_vs_episode.png')
         plt.show()
 
         # Plot Average steps to find first hint per episode
         plt.figure(4)
+            
+        if not os.path.exists("figs"):
+            os.makedirs("figs")
+            
         plt.plot(self.avgStepsToFindHint, label = 'Steps to find hint')
         plt.xlabel('Episode')
         plt.ylabel('Steps')
         plt.title('Average Steps To Find Hint VS Episode')
-        plt.savefig('/figs/avg_steps_to_find_hint_vs_episode.png')
+        plt.savefig('figs/reward_vs_episode.png')
         plt.show()
 
             
