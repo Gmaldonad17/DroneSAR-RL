@@ -29,7 +29,9 @@ class Metrics():
         plt.xlabel('Episode')
         plt.ylabel('Reward')
         plt.title('Reward VS Episode')
-        plt.show()
+        #plt.show()
+        plt.savefig('RewardVSEpisode.png')
+
 
         # Plot Average Distance per episode
         plt.figure(2)
@@ -37,7 +39,8 @@ class Metrics():
         plt.xlabel('Episode')
         plt.ylabel('Distance')
         plt.title('Average Distance From Objective VS Episode')
-        plt.show()
+        #plt.show()
+        plt.savefig('AverageDistanceFromObjectiveVSEpisode.png')
 
         # Plot Average steps to complete per episode
         plt.figure(3)
@@ -45,7 +48,8 @@ class Metrics():
         plt.xlabel('Episode')
         plt.ylabel('Steps')
         plt.title('Average Steps To Find Objective VS Episode')
-        plt.show()
+        #plt.show()
+        plt.savefig('AverageStepsToFindObjectiveVSEpisode.png')
 
         # Plot Average steps to find first hint per episode
         plt.figure(4)
@@ -53,7 +57,8 @@ class Metrics():
         plt.xlabel('Episode')
         plt.ylabel('Steps')
         plt.title('Average Steps To Find Hint VS Episode')
-        plt.show()
+        #plt.show()
+        plt.savefig('AverageStepsToFindHintVSEpisode.png')
 
         
     def UpdateMetrics(self, environment, reward):

@@ -27,7 +27,7 @@ environment:
 
   reward_values:
     tiles: 0.07
-    crash: -0.1
+    crash: -100
     clue: 0.1 
     objective: 0.4 
     avg: 0.1 

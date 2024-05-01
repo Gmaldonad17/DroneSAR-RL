@@ -58,6 +58,7 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
         self.rewards = 0
         self.time_steps = 0
         self.reward_values = reward_values
+        self.crash_times=0
 
         # Starting coordinates of drones
         self.drone_starts = [
@@ -342,7 +343,9 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
             
             if any(drone.position > self.size[0]-1) or any(drone.position < 0) or self.mountain_mask[*drone.position.astype(int)]:
                 drone.crashed = True
-                self.rewards += self.reward_values['crash']
+                self.crash_times += 1
+                if self.crash_times <=2:
+                    self.rewards += self.reward_values['crash']
 
             position_heatmap = self.gaussian_heatmap(drone.position)
             new_heatmap = np.maximum(new_heatmap, position_heatmap)
@@ -452,7 +455,7 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
                 pygame.quit()
 
     def render_heatmap(self, heatmap_normalized, name='Heatmap'):
-        
+
         # og_value = heatmap[0, 0]
         # heatmap[0, 0] = 1
         # heatmap_normalized = cv2.normalize(heatmap, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
@@ -461,8 +464,8 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
         # Convert to 8-bit (0-255) and apply colormap
         heatmap_8bit = np.uint8(255 * heatmap_normalized)  # Scale to [0, 255]
         colored_heatmap = cv2.applyColorMap(heatmap_8bit, cv2.COLORMAP_JET)  # Apply the JET colormap
-        colored_heatmap = cv2.resize(colored_heatmap, (0,0), 
-                                  fx=self.ppm, fy=self.ppm, 
+        colored_heatmap = cv2.resize(colored_heatmap, (0,0),
+                                  fx=self.ppm, fy=self.ppm,
                                   interpolation=cv2.INTER_NEAREST
                                 )
 

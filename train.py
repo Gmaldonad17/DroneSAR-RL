@@ -13,6 +13,7 @@ from agents import DQN, DQNv0
 import torch.optim as optim
 from torch.nn.functional import smooth_l1_loss
 from torch.optim.lr_scheduler import StepLR
+import os
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
@@ -20,6 +21,13 @@ args = parse_args()
 # Holds statistics for training
 metric_object = Metrics()
 
+
+def save_model(model, episode, directory="saved_models", filename="model_checkpoint.pth"):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    path = os.path.join(directory, f"{filename}_{episode}.pth")
+    torch.save(model.state_dict(), path)
+    print(f"Model saved to {path} at episode {episode}")
 
 def epsilon_greedy(q_values, epsilon=0.2):
     """
@@ -151,6 +159,7 @@ def main():
     
     metric_object.GraphResults()
     print()
+    save_model(model, episode)
 
 if __name__ == "__main__":
     main()
