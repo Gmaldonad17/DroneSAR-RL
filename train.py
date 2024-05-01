@@ -13,6 +13,9 @@ from agents import DQN, DQNv0
 import torch.optim as optim
 from torch.nn.functional import smooth_l1_loss
 from torch.optim.lr_scheduler import StepLR
+import os
+import cv2
+
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
@@ -25,7 +28,6 @@ def save_model(model, episode, directory="saved_models", filename="model_checkpo
         os.makedirs(directory)
     path = os.path.join(directory, f"{filename}_{episode}.pth")
     torch.save(model.state_dict(), path)
-    print(f"Model saved to {path} at episode {episode}")
 
 def epsilon_greedy(q_values, epsilon=0.2):
     """
@@ -75,9 +77,9 @@ def main():
     model = eval(config.model_name)(
         config.model_config.in_channels, 
         len(all_actions)).to(device)
-    
+        
     # Optimizer and scheduler setup
-    optimizer = optim.Adam(model.parameters(), lr=0.000001)
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
     scheduler = StepLR(optimizer, step_size=200, gamma=0.99)
     
     loss_func = smooth_l1_loss
@@ -91,14 +93,19 @@ def main():
     min_epsilon = 0.0 # Minimum exploration
 
     counter = 0 # for moving obj X times
+    
+    if not os.path.exists("figs"):
+        os.makedirs("figs")
 
     for episode in pbar:
         current_epsilon = get_epsilon(episode, config.episodes, initial_epsilon, min_epsilon)
         options = {'reset_map': 0, 'reset_locations': 0}
         observations, infos = env.reset(options=options)
         done = False
-        
+
+        rewards = []
         for iter in range(config.len_eps):
+            video_writer = cv2.VideoWriter(f'figs/gameplay_video_episode_{iter}.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 30, (env.img_map.shape[1], env.img_map.shape[0]))        
             total_reward = 0
             while not done:
                 actions = {}
@@ -120,7 +127,10 @@ def main():
                 reward, done, done_reason = env.step(actions)
 
                 total_reward += reward
-                
+                rewards.append(total_reward)
+
+                avg_reward = sum(rewards) / len(rewards)
+
                 if not done:
                     batch_next = []
                     next_state_base = get_model_input(env)
@@ -132,31 +142,41 @@ def main():
                     max_next_q_values = torch.max(next_q_values, dim=1)[0]
                     expected_q_value = reward + config.gamma * max_next_q_values.unsqueeze(1) * (1 - int(done))
 
-                    loss = loss_func(q_values.gather(1, actions_taken.unsqueeze(1)), expected_q_value.detach())
-                    loss *= abs((reward/10))
-                    
-                    optimizer.zero_grad()
-                    loss.backward()
-                    optimizer.step()
+                    if reward > avg_reward:
 
-                    clip_grad_norm_(model.parameters(), max_norm=1.0)
+                        loss = loss_func(q_values.gather(1, actions_taken.unsqueeze(1)), expected_q_value.detach())
+                        loss *= abs((reward/10))
+                        
+                        optimizer.zero_grad()
+                        loss.backward()
+                        optimizer.step()
 
+                        clip_grad_norm_(model.parameters(), max_norm=1.0)
                 env.render()
+                
+                import pygame
+
+                frame = pygame.surfarray.array3d(env.screen)
+                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+                video_writer.write(frame)
                 metric_object.FirstClueFind(env)
 
 
                 if done:
+                    print(f"Episode {episode + 1}: Average reward: {avg_reward}")
                     if done_reason == 1:
                         counter += 1
                     else:
                         counter = 0  # Reset counter if the reason is not 1
                     if counter == 5:
-                        options = {'reset_map': 0, 'reset_locations': 1}  # Assuming a full reset is desired
-                        _, _ = env.reset(options=options)
-                        counter = 0  # Reset the counter after handling the reset
+                         options = {'reset_map': 0, 'reset_locations': 1}
+                         _, _ = env.reset(options=options)
+                         counter = 0  # Reset the counter after handling the reset
                     else:
                         options = {'reset_map': 0, 'reset_locations': 0}
                         _, _ = env.reset(options=options)
+                video_writer.release()
 
             scheduler.step()
             current_lr = scheduler.get_last_lr()[0]
@@ -164,13 +184,12 @@ def main():
             done = False
 
             metric_object.UpdateMetrics(env, total_reward/config.len_eps)
+            save_model(model, episode)
         # _, _ = env.reset()
-        done = False 
+        done = False
     
     metric_object.GraphResults()
     print()
-    if episode % 2 == 0:  # Save every 2 episodes
-        save_model(model, episode)
     
 if __name__ == "__main__":
     main()

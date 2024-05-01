@@ -53,7 +53,6 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
         self.home_base = None
         self.objective = None
         self.done = False
-        self.done_reason = 0 # Init value, 0 is crashed/terminted, 1 is reward
         self.clues = []
         self.original_tiles = [] # [home_base, objective, *clues]
         self.rewards = 0
@@ -110,6 +109,7 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
         self.reset_heatmap(options)
 
         self.done = False
+        self.done_reason = 0
         self.rewards = 0
         self.time_steps = 0
 
@@ -355,19 +355,21 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
             clues_obved = np.where(self.tile_map[mask] == self.clue_index)[0] # - len(self.tile_map[mask])
             if len(clues_obved):
-                # If any of the observed clues have not been discovered
-                clue_discovered = ~self.discovery_map[mask][clues_obved].astype(bool)
-                if clue_discovered.any():
-                    self.rewards += sum(clue_discovered) * self.reward_values['clue']
-                    self.features_heatmap = np.maximum(self.features_heatmap, position_heatmap)
+                self.rewards += len(clues_obved) * self.reward_values['clue']
+                self.features_heatmap = np.maximum(self.features_heatmap, position_heatmap)
+                # # If any of the observed clues have not been discovered
+                # clue_discovered = ~self.discovery_map[mask][clues_obved].astype(bool)
+                # if clue_discovered.any():
+                #     self.rewards += sum(clue_discovered) * self.reward_values['clue']
+                #     self.features_heatmap = np.maximum(self.features_heatmap, position_heatmap)
 
             self.discovery_map[mask] = 1
             self.features_heatmap[self.discovery_map.astype(bool) & self.mountain_mask] = 0
 
             if self.discovery_map[*self.objective]:
                 self.done = True
-                self.done_reason = 1
                 self.rewards += self.reward_values['objective']
+                self.done_reason = 1
 
             drone.observation = obv
             if drone.heatmap is None:
@@ -383,7 +385,6 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
         if self.time_steps > self.terminal_time_steps or all(terminate):
             self.done = True
-            self.done_reason = 0 #terminted/crashed
 
         distances = []
         for drone in self.drones:

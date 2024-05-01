@@ -29,6 +29,7 @@ class Metrics():
         plt.xlabel('Episode')
         plt.ylabel('Reward')
         plt.title('Reward VS Episode')
+        plt.savefig('/figs/reward_vs_episode.png')
         plt.show()
 
         # Plot Average Distance per episode
@@ -37,6 +38,7 @@ class Metrics():
         plt.xlabel('Episode')
         plt.ylabel('Distance')
         plt.title('Average Distance From Objective VS Episode')
+        plt.savefig('/figs/avg_distance_vs_episode.png')
         plt.show()
 
         # Plot Average steps to complete per episode
@@ -45,6 +47,7 @@ class Metrics():
         plt.xlabel('Episode')
         plt.ylabel('Steps')
         plt.title('Average Steps To Find Objective VS Episode')
+        plt.savefig('/figs/avg_steps_to_complete_vs_episode.png')
         plt.show()
 
         # Plot Average steps to find first hint per episode
@@ -53,38 +56,28 @@ class Metrics():
         plt.xlabel('Episode')
         plt.ylabel('Steps')
         plt.title('Average Steps To Find Hint VS Episode')
+        plt.savefig('/figs/avg_steps_to_find_hint_vs_episode.png')
         plt.show()
 
-        
+            
     def UpdateMetrics(self, environment, reward):
         self.rewardsPerEpisode.append(reward)
-        # Get position of the objective
         xObj, yObj = environment.objective[0], environment.objective[1]
         total_distance = 0
         total_drones = 0
-        # Go through each drone to find distance to objective
         for _, agent in enumerate(environment.drones):
             xDrone, yDrone = agent.position
             total_drones += 1
             total_distance += sqrt((xObj - xDrone)**2 + (yObj - yDrone)**2)
-        # Average drone distance and add average distance to metrics
-        self.avgDistanceFromTarget.append(total_distance/total_drones) 
-        # Add number of steps it took to metrics
-        # If Objective was found, save amount of time it took
-        if environment.discovery_map[yObj,xObj] == 1:
+        self.avgDistanceFromTarget.append(total_distance / total_drones) 
+
+        if environment.discovery_map[yObj, xObj] == 1:
             self.avgStepsToComplete.append(environment.time_steps)
-        # Objective was not found, apply max time steps
         else:
             self.avgStepsToComplete.append(environment.terminal_time_steps)
-        # Add reward to metrics
-
-        # avg time to find hint
-        # If it didn't find a hint, save max time steps
-        if self.hintsFound == 0:
-                self.avgStepsToFindHint.append(environment.terminal_time_steps) # Max out value
-        # Reset hint count for next iteration
+        # Reset hint count for next iteration (ensure this is in the right place in your loop or episode management)
         self.hintsFound = 0
-
+        
 # Goes through each clue and determines if it has been found
 # Returns total number of found clues
 def FoundClues(environment):

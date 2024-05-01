@@ -15,7 +15,7 @@ environment:
           [0.30, 0.40], ]
   map_seed: null
   heatmap_decay: 0.013
-  terminal_time_steps: 1500
+  terminal_time_steps: 400
   num_drones: 8
   feature_baseline: 0.5
 
@@ -30,12 +30,12 @@ environment:
     crash: -0.1
     clue: 0.1 
     objective: 0.4 
-    avg: 0.1 
-    distance_spread: 0.1 
+    avg: 0.1
+    distance_spread: 0.1
     action_diversity: 0.1
 
 max_power_steps: 2
-len_eps: 30
+len_eps: 25
 episodes: 100
 
 save_frequency: 2  # Save model every 10 episodes
