@@ -14,6 +14,8 @@ import torch.optim as optim
 from torch.nn.functional import smooth_l1_loss
 from torch.optim.lr_scheduler import StepLR
 import os
+import cv2
+import pygame
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
@@ -92,12 +94,21 @@ def main():
     initial_epsilon = 0.7 # Starting with exploration
     min_epsilon = 0.0 # Minimum exploration
 
+    if not os.path.exists("figs"):
+        os.makedirs("figs")
+
+    if not os.path.exists("figs/videos"):
+        os.makedirs("figs/videos")
+
     for episode in pbar:
         current_epsilon = get_epsilon(episode, config.episodes, initial_epsilon, min_epsilon)
         options = {'reset_map': 0, 'reset_locations': 0}
         observations, infos = env.reset(options=options)
         done = False
-        
+        video_writer = cv2.VideoWriter(f'./figs/videos/gameplay_video_episode_{episode}.mp4',
+                                       cv2.VideoWriter_fourcc(*'mp4v'), 30,
+                                       (env.img_map.shape[1], env.img_map.shape[0]))
+
         for iter in range(config.len_eps):
             total_reward = 0
             while not done:
@@ -142,6 +153,9 @@ def main():
                     clip_grad_norm_(model.parameters(), max_norm=1.0)
 
                 env.render()
+                frame = pygame.surfarray.array3d(env.screen)
+                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                video_writer.write(frame)
                 metric_object.FirstClueFind(env)
 
                 if done:
@@ -155,8 +169,8 @@ def main():
 
             metric_object.UpdateMetrics(env, total_reward/config.len_eps)
         # _, _ = env.reset()
-        done = False 
-    
+        done = False
+    video_writer.release()
     metric_object.GraphResults()
     print()
     save_model(model, episode)
