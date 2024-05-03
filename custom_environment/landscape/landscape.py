@@ -100,13 +100,13 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
     def reset(self, seed=None, options={}):
 
-        self.discovery_map = np.zeros(self.size)
-        
         self.reset_map(options)
         self.reset_locations(options)
         self.read_map()
         self.reset_drones(options)
         self.reset_heatmap(options)
+        self.reset_discovery_map(options)
+        self.reset_feature_map(options)
 
         self.done = False
         self.done_reason = 0
@@ -119,6 +119,18 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
         return None, None
 
+    def reset_discovery_map(self, options):
+        if not options.get('reset_discovery', 1):
+            self.discovery_map[*self.objective] = 0
+            for clue in self.clues:
+                self.discovery_map[*clue] = 0
+            return
+        self.discovery_map = np.zeros(self.size)
+
+    def reset_feature_map(self, options):
+        if not options.get('reset_feature', 1):
+            return
+        self.features_heatmap = np.zeros(self.size) + self.feature_baseline
 
     def reset_map(self, options):
         if not options.get('reset_map', 1):
@@ -255,7 +267,6 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
             return
          
         self.position_heatmap = np.zeros(self.size)
-        self.features_heatmap = np.zeros(self.size) + self.feature_baseline
 
         for drone in self.drones:
             position_heatmap = self.gaussian_heatmap(drone.position)
@@ -313,23 +324,7 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
         action_dissimilarity = calculate_action_dissimilarity(actions)
         self.rewards += action_dissimilarity * self.reward_values['action_diversity']
-        positions = np.array([drone.position for drone in self.drones if not drone.crashed])
-
-        # Using broadcasting to find distances between all pairs of drones
-        if len(positions) > 1:
-            diff = positions[:, np.newaxis, :] - positions[np.newaxis, :, :]
-            dist_matrix = np.linalg.norm(diff, axis=2)
-            # Only consider upper triangle minus diagonal to avoid redundant pairs
-            total_distance = np.sum(np.triu(dist_matrix, k=1))
-            num_pairs = len(positions) * (len(positions) - 1) / 2
-
-            # Only add to rewards if there are at least one pair of drones
-            if num_pairs > 0:
-                average_distance = total_distance / num_pairs
-                self.rewards += average_distance * self.reward_values['distance_spread']  # Reward scaling factor
-        else:
-            total_distance = 0
-            num_pairs = 0
+        
 
         terminate = []
         for drone in self.drones:
@@ -355,13 +350,11 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
             clues_obved = np.where(self.tile_map[mask] == self.clue_index)[0] # - len(self.tile_map[mask])
             if len(clues_obved):
-                self.rewards += len(clues_obved) * self.reward_values['clue']
-                self.features_heatmap = np.maximum(self.features_heatmap, position_heatmap)
-                # # If any of the observed clues have not been discovered
-                # clue_discovered = ~self.discovery_map[mask][clues_obved].astype(bool)
-                # if clue_discovered.any():
-                #     self.rewards += sum(clue_discovered) * self.reward_values['clue']
-                #     self.features_heatmap = np.maximum(self.features_heatmap, position_heatmap)
+                # If any of the observed clues have not been discovered
+                clue_discovered = ~self.discovery_map[mask][clues_obved].astype(bool)
+                if clue_discovered.any():
+                    self.rewards += sum(clue_discovered) * self.reward_values['clue']
+                    self.features_heatmap = np.maximum(self.features_heatmap, position_heatmap)
 
             self.discovery_map[mask] = 1
             self.features_heatmap[self.discovery_map.astype(bool) & self.mountain_mask] = 0
@@ -385,6 +378,24 @@ class landscapev0(ParallelEnv): # Unify X, Y CORDS
 
         if self.time_steps > self.terminal_time_steps or all(terminate):
             self.done = True
+
+        positions = np.array([drone.position for drone in self.drones if not drone.crashed])
+
+        # Using broadcasting to find distances between all pairs of drones
+        if len(positions) > 1:
+            diff = positions[:, np.newaxis, :] - positions[np.newaxis, :, :]
+            dist_matrix = np.linalg.norm(diff, axis=2)
+            # Only consider upper triangle minus diagonal to avoid redundant pairs
+            total_distance = np.sum(np.triu(dist_matrix, k=1))
+            num_pairs = len(positions) * (len(positions) - 1) / 2
+
+            # Only add to rewards if there are at least one pair of drones
+            if num_pairs > 0:
+                average_distance = total_distance / num_pairs
+                self.rewards += average_distance * self.reward_values['distance_spread']  # Reward scaling factor
+        else:
+            total_distance = 0
+            num_pairs = 0
 
         distances = []
         for drone in self.drones:

@@ -1,8 +1,8 @@
-model_name: 'DQNv0'
+model_name: 'DQN'
 model_config:
   in_channels: 4
 
-gamma: 0.09
+gamma: 0.99
 loss_function: smooth_l1_loss
 
 environment:
@@ -21,22 +21,22 @@ environment:
 
   drone_config:
     pixel_size: 8
-    mass: 1.5
+    mass: 2.0
     max_motor_thrust: 5.0
     time_step: 0.3
 
   reward_values:
-    tiles: 0.07
-    crash: -0.1
-    clue: 0.1
-    objective: 0.4
-    avg: 0.1
-    distance_spread: 0.1
-    action_diversity: 0.1
+    tiles: 0.2
+    crash: -1.0
+    clue: 3.0
+    objective: 5.5
+    avg: 0.2
+    distance_spread: 0.2
+    action_diversity: 0.3
 
 max_power_steps: 2
-len_eps: 25
-episodes: 100
+len_eps: 50
+episodes: 10
 
 save_frequency: 2  # Save model every 10 episodes
 reset_frequency: 5  # Reset object objetive occurs 5 times in a row

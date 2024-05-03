@@ -79,8 +79,8 @@ def main():
         len(all_actions)).to(device)
         
     # Optimizer and scheduler setup
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
-    scheduler = StepLR(optimizer, step_size=200, gamma=0.99)
+    optimizer = optim.Adam(model.parameters(), lr=0.000001)
+    # scheduler = StepLR(optimizer, step_size=200, gamma=0.99)
     
     loss_func = smooth_l1_loss
 
@@ -89,8 +89,8 @@ def main():
     # Loop until the game is done
     pbar = tqdm(range(config.episodes))
 
-    initial_epsilon = 0.7 # Starting with exploration
-    min_epsilon = 0.0 # Minimum exploration
+    initial_epsilon = 0.4 # Starting with exploration
+    min_epsilon = 0.1 # Minimum exploration
 
     counter = 0 # for moving obj X times
     
@@ -101,15 +101,16 @@ def main():
         os.makedirs("figs/videos")
 
     for episode in pbar:
-        current_epsilon = get_epsilon(episode, config.episodes, initial_epsilon, min_epsilon)
-        options = {'reset_map': 0, 'reset_locations': 0}
+        
+        options = {'reset_map': 1, 'reset_locations': 1}
         observations, infos = env.reset(options=options)
         done = False
         video_writer = cv2.VideoWriter(f'./figs/videos/gameplay_video_episode_{episode}.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 30, (env.img_map.shape[1], env.img_map.shape[0]))        
-
-        rewards = []
-        for iter in range(config.len_eps):
+        ibar = tqdm(range(config.len_eps), leave=False)
+        for iter in ibar:
+            current_epsilon = get_epsilon(iter, config.len_eps, initial_epsilon, min_epsilon)
             total_reward = 0
+            rewards = []
             while not done:
                 actions = {}
                 batch = []
@@ -130,9 +131,9 @@ def main():
                 reward, done, done_reason = env.step(actions)
 
                 total_reward += reward
-                rewards.append(total_reward)
+                rewards.append(reward)
 
-                avg_reward = sum(rewards) / len(rewards)
+                med_reward = np.median(rewards)
 
                 if not done:
                     batch_next = []
@@ -145,7 +146,8 @@ def main():
                     max_next_q_values = torch.max(next_q_values, dim=1)[0]
                     expected_q_value = reward + config.gamma * max_next_q_values.unsqueeze(1) * (1 - int(done))
 
-                    if abs(reward) > abs(avg_reward):
+                    if abs(reward) > abs(med_reward) or np.random.randint(0, 20) == 0:
+                        # print(reward, med_reward)
 
                         loss = loss_func(q_values.gather(1, actions_taken.unsqueeze(1)), expected_q_value.detach())
                         loss *= abs((reward/10))
@@ -155,6 +157,7 @@ def main():
                         optimizer.step()
 
                         clip_grad_norm_(model.parameters(), max_norm=1.0)
+
                 env.render()
                 
                 import pygame
@@ -164,30 +167,22 @@ def main():
 
                 video_writer.write(frame)
                 metric_object.FirstClueFind(env)
+                ibar.set_description(f"Epsilon: {current_epsilon:.4f}")
 
+            metric_object.UpdateMetrics(env, total_reward)
+            options = {'reset_map': 0, 'reset_locations': 0, 'reset_discovery': 0, 'reset_feature': 0}
+            _, _ = env.reset(options=options)
 
-                if done:
-                    print(f"Episode {episode + 1}: Average reward: {avg_reward}")
-                    if done_reason == 1:
-                        counter += 1
-                    else:
-                        counter = 0  # Reset counter if the reason is not 1
-                    if counter == 5:
-                         options = {'reset_map': 0, 'reset_locations': 1}
-                         _, _ = env.reset(options=options)
-                         counter = 0  # Reset the counter after handling the reset
-                    else:
-                        options = {'reset_map': 0, 'reset_locations': 0}
-                        _, _ = env.reset(options=options)
             video_writer.release()
 
-            scheduler.step()
-            current_lr = scheduler.get_last_lr()[0]
-            pbar.set_description(f"LR: {current_lr:.6f}, Epsilon: {current_epsilon:.4f}")
+            # scheduler.step()
+            # current_lr = scheduler.get_last_lr()[0]
+            pbar.set_description(f"Epsilon: {current_epsilon:.4f}")
             done = False
 
-            metric_object.UpdateMetrics(env, total_reward/config.len_eps)
-            save_model(model, episode)
+            
+
+        save_model(model, episode)
         # _, _ = env.reset()
         done = False
     

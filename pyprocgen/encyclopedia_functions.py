@@ -935,10 +935,10 @@ def encyclopedia_creation() -> Encyclopedia:
         dict_biomes,
         Biome(
             name="mountain",
-            temperature_min=-2.0, # -2.0
-            temperature_max=3.0, # 0.0
-            pluviometry_min=-3.0, # -2.0
-            pluviometry_max=3.0, # 1.0
+            temperature_min=-1.8, # -2.0
+            temperature_max=2.5, # 0.0
+            pluviometry_min=-2.5, # -2.0
+            pluviometry_max=2.0, # 1.0
             ground_color=Color(50, 50, 50),
             trees=[empty_tree],
             height_min=1.5,

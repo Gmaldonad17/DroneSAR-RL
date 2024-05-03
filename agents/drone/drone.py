@@ -12,7 +12,7 @@ class QuadDrone:
                  mass=0.5, 
                  max_motor_thrust=10.5, 
                  time_step=0.01,
-                 drag_coefficient = 0.95
+                 drag_coefficient = 0.80
                  ):
         
         self.pixel_size = pixel_size

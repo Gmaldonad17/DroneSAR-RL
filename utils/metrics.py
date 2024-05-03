@@ -78,16 +78,16 @@ class Metrics():
             
     def UpdateMetrics(self, environment, reward):
         self.rewardsPerEpisode.append(reward)
-        xObj, yObj = environment.objective[0], environment.objective[1]
+        xObj, yObj = environment.objective[1], environment.objective[0]
         total_distance = 0
         total_drones = 0
         for _, agent in enumerate(environment.drones):
-            xDrone, yDrone = agent.position
+            yDrone, xDrone = agent.position
             total_drones += 1
             total_distance += sqrt((xObj - xDrone)**2 + (yObj - yDrone)**2)
         self.avgDistanceFromTarget.append(total_distance / total_drones) 
 
-        if environment.discovery_map[yObj, xObj] == 1:
+        if environment.discovery_map[*environment.objective]:
             self.avgStepsToComplete.append(environment.time_steps)
         else:
             self.avgStepsToComplete.append(environment.terminal_time_steps)
